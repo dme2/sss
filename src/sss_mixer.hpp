@@ -30,8 +30,11 @@ enum NodeType { OUTPUT, INPUT, FILE_OUT, FILE_INPUT };
  * independent we should
  *
  */
-template <typename T> struct SSS_NodeGraph {};
 
+// struct NodeLists { SSS_Node* next;  }
+
+// TODO:
+// can node functions be coroutines? (i.e. generators)
 template <typename T> class SSS_Node {
 public:
   using fn_type = std::function<std::size_t(SSS_Node *, std::size_t)>;
@@ -46,6 +49,9 @@ public:
   SSS_File *file;
   float *temp_buffer;
   std::function<void(SSS_Node<T>)> input_fn;
+
+  // for NodeLists
+  SSS_Node<T> *next;
 
   void run_fn() { fun(this, buff_size); }
 
@@ -113,8 +119,20 @@ public:
 
     // TODO:
     // clean up
-    if ((nt != FILE_OUT && nt != FILE_INPUT) && run_multithreaded)
-      thread_pool->push_node_tp(node->fun, node, node->buff_size);
+    // with the current stup, sequential nodes will need to be run in the same
+    // thread
+    if ((nt != FILE_OUT && nt != FILE_INPUT) && run_multithreaded) {
+      if (node->next != nullptr) { // i.e. a sequential node
+        auto cur_node = node;
+        while (cur_node != nullptr) {
+          thread_pool->push_node_list_fn_rr(cur_node->fun, cur_node,
+                                            cur_node->buff_size);
+          auto cur_node = node->next;
+        }
+      } else {
+        thread_pool->push_node_tp(node->fun, node, node->buff_size);
+      }
+    }
 
     if (nt == INPUT || nt == FILE_INPUT)
       input_nodes.push_back(node);

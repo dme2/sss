@@ -61,7 +61,8 @@ public:
         cur_task = tasks[i];
         for (;;) {
           cur_task();
-          // TODO: replace with a spinlock
+          // eval_task(i);
+          //  TODO: replace with a spinlock
           sem.acquire();
         }
         //}
@@ -69,7 +70,10 @@ public:
     }
   }
 
-  SSS_ThreadPool(uint32_t n_threads = std::thread::hardware_concurrency()) {
+  SSS_ThreadPool(uint32_t n_threads = std::thread::hardware_concurrency())
+      : n_threads(n_threads) {
+
+    tasks_.resize(n_threads);
     /*
         for (std::size_t i = 0; i < n_threads; ++i) {
           avail_threads.emplace_back([this, i] {
@@ -127,25 +131,61 @@ public:
           std::bind(std::forward<F>(f), std::forward<Args>(args)...));
     }
   }
+
   void signal_all() { sem.release(); }
 
   // BIG TODO:
   //  is a progressive backoff spinlock necessary here?
+  //
   // This function iterates through the tasks associated with each
   // thread (stored in thread_task_map), executes the task - or
   // if the task is sequential, traverses the task list and
   // executes in a sequential manner
-  void eval_task() {}
+  void eval_tasks(std::size_t idx) {
+    for (auto &t : tasks_[idx]) {
+      t();
+    }
+  }
 
   bool get_run_status() { return running.load(std::memory_order_relaxed); }
 
+  template <typename F, typename... Args>
+  void push_node_fn_rr(F &&f, Args &&...args) {
+    {
+      std::unique_lock<std::mutex> lock(queue_mutex);
+      tasks_[cur_rr_index].push_back(
+          std::bind(std::forward<F>(f), std::forward<Args>(args)...));
+
+      if (cur_rr_index == n_threads)
+        cur_rr_index = 0;
+      else
+        cur_rr_index += 1;
+    }
+  }
+
+  // same as push_node_fn_rr but stays on the same index
+  template <typename F, typename... Args>
+  void push_node_list_fn_rr(F &&f, Args &&...args) {
+    {
+      std::unique_lock<std::mutex> lock(queue_mutex);
+      tasks_[cur_rr_index].push_back(
+          std::bind(std::forward<F>(f), std::forward<Args>(args)...));
+    }
+  }
+
+  void increment_rr_index() { cur_rr_index += 1; }
+
 private:
   std::deque<fn_type> tasks;
+  std::vector<std::vector<fn_type>> tasks_;
   std::deque<std::thread> avail_threads;
   std::mutex queue_mutex;
   std::condition_variable condition;
   std::atomic<bool> running;
   std::counting_semaphore<1> sem{0};
+  std::size_t n_threads;
+  // current index for round-robin assigning
+  std::size_t cur_rr_index{0};
 
   bool stop;
 };
