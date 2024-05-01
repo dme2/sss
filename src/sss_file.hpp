@@ -2,9 +2,6 @@
 #include <iostream>
 #include <vector>
 
-// TODO:
-// [] coroutinize
-
 class SSS_File {
 public:
   std::string file_path;

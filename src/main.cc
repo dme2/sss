@@ -34,27 +34,22 @@ std::size_t gen_sine1(SSS_Node<float> *node, std::size_t num_samples) {
   auto chans = node->channels;
   double float_sample_rate = 44100.0;
   double seconds_per_frame = 1.0 / float_sample_rate;
-  // int frame_count = node->node_buffer->get_avail();
   double phaseStep = (2.0 * M_PI * sine_data->pitch) / float_sample_rate;
-  // std::cout << frame_count << std::endl;
   std::size_t frame_count = num_samples;
   // float *out = new float[frame_count];
   node->temp_buffer = new float[frame_count];
-  // frame_count = node->node_queue->get_capacity();
-  // std::cout << frame_count << std::endl;
+  frame_count = node->node_queue->get_capacity();
 
   bool enq;
   for (int frame = 0; frame < frame_count / chans; frame++) {
     auto sample = sin(sine_data->phase) * sine_data->volume;
     for (int i = 0; i < chans; i++) {
-      // out[(frame * chans) + i] = sample;
       // node->temp_buffer[(frame * chans) + i] = sample;
-      // node->node_buffer->write(sample);
       enq = node->node_queue->enqueue(sample);
       // TODO: the thread which calls this should catch if
       // there are already too many samples in the queue
-      if (!enq)
-        return frame_count;
+      // if (!enq)
+      // return frame_count;
     }
 
     sine_data->phase += phaseStep;

@@ -1,8 +1,9 @@
-#include "sss_buffer.hpp"
-#include "sss_fifo.hpp"
-#include "sss_file.hpp"
+// #include "sss_buffer.hpp"
+// #include "sss_fifo.hpp"
+// #include "sss_file.hpp"
+// #include "sss_node.hpp"
 #include "sss_thread.hpp"
-#include "sss_util.hpp"
+//  #include "sss_util.hpp"
 #include <cstdlib>
 #include <cstring>
 #include <functional>
@@ -13,7 +14,7 @@
 
 // N.B. FILE_OUT = reading + playing an audio file
 //      FILE_IN  = write audio to a file
-enum NodeType { OUTPUT, INPUT, FILE_OUT, FILE_INPUT };
+// enum NodeType { OUTPUT, INPUT, FILE_OUT, FILE_INPUT };
 
 /* There are really only two important graph structures for the audio nodes
  *   1. sequential. i.e. one must be processed before another
@@ -35,6 +36,7 @@ enum NodeType { OUTPUT, INPUT, FILE_OUT, FILE_INPUT };
 
 // TODO:
 // can node functions be coroutines? (i.e. generators)
+/*
 template <typename T> class SSS_Node {
 public:
   using fn_type = std::function<std::size_t(SSS_Node *, std::size_t)>;
@@ -79,7 +81,7 @@ public:
     node_queue = new SSS_Fifo<T>(s * 2);
   }
 };
-
+*/
 template <typename T> class SSS_Mixer {
 public:
   using fn_type = std::function<std::size_t(SSS_Node<T> *, std::size_t)>;

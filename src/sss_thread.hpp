@@ -1,3 +1,4 @@
+#include "sss_node.hpp"
 #include <condition_variable>
 #include <deque>
 #include <functional>
@@ -44,28 +45,14 @@ public:
     for (std::size_t i = 0; i < n_threads; ++i) {
       avail_threads.emplace_back([this, i] {
         fn_type cur_task;
-        // while (true) {
-        //   {
-        //    std::unique_lock<std::mutex> lock(spin_lock);
-        //   condition.wait(lock, [this] { return stop || !tasks.empty(); });
-        //  if (stop && tasks.empty())
-        //   return;
-        //  }
-        //  cur_task = std::move(tasks.front());
-        //  tasks.pop_front();
-        //  cur_task();
-        //  spin_lock.unlock();
-        // std::cout << "unlocked\n";
         if (i >= tasks.size())
           return;
         cur_task = tasks[i];
         for (;;) {
-          cur_task();
           // eval_task(i);
-          //  TODO: replace with a spinlock
           sem.acquire();
+          cur_task();
         }
-        //}
       });
     }
   }
@@ -74,32 +61,6 @@ public:
       : n_threads(n_threads) {
 
     tasks_.resize(n_threads);
-    /*
-        for (std::size_t i = 0; i < n_threads; ++i) {
-          avail_threads.emplace_back([this, i] {
-            fn_type cur_task;
-            //while (true) {
-              //  {
-              //   std::unique_lock<std::mutex> lock(spin_lock);
-              //  condition.wait(lock, [this] { return stop || !tasks.empty();
-       });
-              // if (stop && tasks.empty())
-              //  return;
-              // }
-              // cur_task = std::move(tasks.front());
-              // tasks.pop_front();
-              // cur_task();
-              // spin_lock.unlock();
-              //std::cout << "unlocked\n";
-              if (i >= tasks.size())
-                return;
-              cur_task = tasks[i];
-              for (;;)
-                cur_task();
-                //}
-          });
-        }
-        */
   }
 
   ~SSS_ThreadPool() {
@@ -178,6 +139,7 @@ public:
 private:
   std::deque<fn_type> tasks;
   std::vector<std::vector<fn_type>> tasks_;
+  std::vector<std::vector<SSS_Node<float>>> nodes_;
   std::deque<std::thread> avail_threads;
   std::mutex queue_mutex;
   std::condition_variable condition;
