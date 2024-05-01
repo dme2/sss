@@ -44,14 +44,15 @@ public:
     running.store(true, std::memory_order_release);
     for (std::size_t i = 0; i < n_threads; ++i) {
       avail_threads.emplace_back([this, i] {
-        fn_type cur_task;
-        if (i >= tasks.size())
+        // fn_type cur_task;
+        if (i >= nodes_.size())
           return;
-        cur_task = tasks[i];
+        // cur_task = tasks[i];
         for (;;) {
-          // eval_task(i);
+          eval_node(i);
+          std::cout << i << std::endl;
           sem.acquire();
-          cur_task();
+          // cur_task();
         }
       });
     }
@@ -61,6 +62,7 @@ public:
       : n_threads(n_threads) {
 
     tasks_.resize(n_threads);
+    nodes_.resize(n_threads);
   }
 
   ~SSS_ThreadPool() {
@@ -108,6 +110,16 @@ public:
     }
   }
 
+  void eval_node(std::size_t idx) {
+    for (auto &n : nodes_[idx]) {
+      auto cur_node = n;
+      while (cur_node != nullptr) {
+        cur_node->run_fn();
+        cur_node = n->next;
+      }
+    }
+  }
+
   bool get_run_status() { return running.load(std::memory_order_relaxed); }
 
   template <typename F, typename... Args>
@@ -116,6 +128,19 @@ public:
       std::unique_lock<std::mutex> lock(queue_mutex);
       tasks_[cur_rr_index].push_back(
           std::bind(std::forward<F>(f), std::forward<Args>(args)...));
+
+      if (cur_rr_index == n_threads)
+        cur_rr_index = 0;
+      else
+        cur_rr_index += 1;
+    }
+  }
+
+  void push_node_rr(SSS_Node<float> *n) {
+    {
+      std::unique_lock<std::mutex> lock(queue_mutex);
+      nodes_[cur_rr_index].push_back(n);
+      std::cout << cur_rr_index << std::endl;
 
       if (cur_rr_index == n_threads)
         cur_rr_index = 0;
@@ -139,7 +164,7 @@ public:
 private:
   std::deque<fn_type> tasks;
   std::vector<std::vector<fn_type>> tasks_;
-  std::vector<std::vector<SSS_Node<float>>> nodes_;
+  std::vector<std::vector<SSS_Node<float> *>> nodes_;
   std::deque<std::thread> avail_threads;
   std::mutex queue_mutex;
   std::condition_variable condition;

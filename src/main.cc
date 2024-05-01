@@ -37,9 +37,9 @@ std::size_t gen_sine1(SSS_Node<float> *node, std::size_t num_samples) {
   double phaseStep = (2.0 * M_PI * sine_data->pitch) / float_sample_rate;
   std::size_t frame_count = num_samples;
   // float *out = new float[frame_count];
-  node->temp_buffer = new float[frame_count];
+  // node->temp_buffer = new float[frame_count];
   frame_count = node->node_queue->get_capacity();
-
+  // std::cout << frame_count << std::endl;
   bool enq;
   for (int frame = 0; frame < frame_count / chans; frame++) {
     auto sample = sin(sine_data->phase) * sine_data->volume;
@@ -116,10 +116,15 @@ int main() {
   fn_data *fn_d2 = new fn_data();
   fn_d2->pitch = 328.0;
 
-  sss_handle->push_node(OUTPUT, fn, fn_d1, "default");
-  sss_handle->push_node(OUTPUT, fn, fn_d2, "default");
-  // sss_handle->push_node(FILE_OUT, nullptr, nullptr, "apx", "output");
-  // sss_handle->push_node(FILE_INPUT, i_fn, nullptr, "in", "output_test");
+  auto node1 = new SSS_Node<float>(OUTPUT, fn, 2, 512, "default", fn_d1);
+  auto node2 = new SSS_Node<float>(OUTPUT, fn, 2, 512, "default", fn_d2);
+  // node1->next = node2;
+  sss_handle->register_mixer_node(node1);
+  sss_handle->register_mixer_node(node2);
+  // sss_handle->push_node(OUTPUT, fn, fn_d1, "default");
+  // sss_handle->push_node(OUTPUT, fn, fn_d2, "default");
+  //  sss_handle->push_node(FILE_OUT, nullptr, nullptr, "apx", "output");
+  //  sss_handle->push_node(FILE_INPUT, i_fn, nullptr, "in", "output_test");
   sss_handle->init_output_backend();
   // sss_handle->init_input_backend();
   sss_handle->list_devices();

@@ -38,6 +38,10 @@ public:
                                        fp);
   }
 
+  void register_mixer_node(SSS_Node<T> *node) {
+    this->sss_backend->mixer->register_node(node);
+  }
+
   SSS(std::size_t frame_count, uint8_t channels, int32_t rate, SSS_FMT fmt)
       : channels(channels), rate(rate), frame_count(frame_count) {
     bits_per_sample = sizeof(T) * 8;

@@ -46,6 +46,14 @@ public:
   }
 
   SSS_Node(NodeType type, fn_type fn, int ch, std::size_t s, std::string id,
+           void *fn_data)
+      : nt(type), channels(ch), buff_size(s), device_id(id), fn_data(fn_data) {
+    this->fun = fn;
+    node_buffer = new SSS_Buffer<T>(s * 4);
+    node_queue = new SSS_Fifo<T>(s * 4);
+  }
+
+  SSS_Node(NodeType type, fn_type fn, int ch, std::size_t s, std::string id,
            std::string file_path)
       : nt(type), channels(ch), buff_size(s), device_id(id) {
     this->fun = fn;
