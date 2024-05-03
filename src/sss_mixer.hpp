@@ -106,11 +106,11 @@ public:
       : buff_size(buff_size), run_multithreaded(multithread) {
     mixer_buffer = new SSS_Buffer<T>(buff_size);
     thread_pool = new SSS_ThreadPool(2);
-    std::cout << "run multi: " << multithread << std::endl;
   }
 
   void register_node(SSS_Node<T> *node) {
-    thread_pool->push_node_rr(node);
+    // thread_pool->push_node_rr(node);
+    thread_pool->register_thread(node);
     output_nodes.push_back(node);
   }
 
@@ -150,12 +150,13 @@ public:
 
   void sample_output_nodes() {
     if (run_multithreaded) {
-      if (!thread_pool->get_run_status()) {
-        thread_pool->start_threads();
-        // return;
-      }
-      std::cout << "sig\n";
-      thread_pool->signal_all();
+      // if (!thread_pool->get_run_status()) {
+      //  thread_pool->start_threads();
+      //   return;
+      //}
+      // std::cout << "sig\n";
+      //  thread_pool->signal_all();
+      thread_pool->signal_threads();
     } else {
       for (SSS_Node<T> *n : output_nodes) {
         if (n->fun != nullptr) {
@@ -176,6 +177,7 @@ public:
   void sample_mixer_buffer_out(std::size_t n_samples, T **buff) {
     // send some data first, then do the sampling is a
     // better strategy maybe?
+    std::cout << "sampling mixer\n";
     mixer_buffer->read_n(*buff, n_samples);
     scratch_buff = std::vector<T>(n_samples, 0);
     for (auto n : output_nodes) {
@@ -195,8 +197,8 @@ public:
         for (int i = 0; i < n_samples; i++) {
           if (n->node_queue->dequeue(res))
             cur_node_buff[i] = res;
-          // else
-          //  std::cout << "err on dequeue!\n";
+          else
+            std::cout << "err on dequeue!\n";
         }
 
         //  mix into scratch_buff

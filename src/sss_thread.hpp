@@ -7,6 +7,38 @@
 #include <semaphore>
 #include <thread>
 
+using fn_type = std::function<void()>;
+
+class SSS_Thread {
+public:
+  SSS_Thread(std::size_t idx, SSS_Node<float> *node) : idx_(idx), node_(node) {}
+
+  void start_thread() {
+    thread = std::thread([this] { this->thread_fn_inner(); });
+  }
+
+  void thread_fn_inner() {
+    for (;;) {
+      // std::cout << "thread awake!\n";
+      auto res = node_->run_fn();
+      sem.acquire();
+      std::cout << res << std::endl;
+      // while (res <= 1) {
+      //  res = node_->run_fn();
+      // }
+    }
+  }
+
+  void wakeup() { sem.release(); }
+
+private:
+  std::size_t idx_;
+  // fn_type node_fn_;
+  std::thread thread;
+  std::counting_semaphore<1> sem{0};
+  SSS_Node<float> *node_;
+};
+
 struct spinlock {
   std::atomic<bool> lock_ = {0};
 
@@ -38,7 +70,7 @@ struct spinlock {
 
 class SSS_ThreadPool {
 public:
-  using fn_type = std::function<void()>;
+  // using fn_type = std::function<void()>;
   void start_threads(uint32_t n_threads = std::thread::hardware_concurrency()) {
 
     running.store(true, std::memory_order_release);
@@ -49,10 +81,10 @@ public:
           return;
         // cur_task = tasks[i];
         for (;;) {
-          eval_node(i);
-          std::cout << i << std::endl;
-          sem.acquire();
-          // cur_task();
+          // eval_node(i);
+          //  std::cout << i << std::endl;
+          // sem.acquire();
+          //  cur_task();
         }
       });
     }
@@ -95,7 +127,10 @@ public:
     }
   }
 
-  void signal_all() { sem.release(); }
+  void signal_all() {
+    std::cout << "signaling\n";
+    sem.release();
+  }
 
   // BIG TODO:
   //  is a progressive backoff spinlock necessary here?
@@ -161,15 +196,30 @@ public:
 
   void increment_rr_index() { cur_rr_index += 1; }
 
+  void signal_threads() {
+    // std::cout << "signaling threads!\n";
+    for (std::size_t i = 0; i < n_threads; i++)
+      threads_[i]->wakeup();
+    // std::cout << "thread wakeup\n";
+    //  sem.acquire();
+  }
+
+  void register_thread(SSS_Node<float> *node) {
+    auto thread = new SSS_Thread(cur_rr_index++, node);
+    thread->start_thread();
+    threads_.push_back(thread);
+  }
+
 private:
   std::deque<fn_type> tasks;
   std::vector<std::vector<fn_type>> tasks_;
   std::vector<std::vector<SSS_Node<float> *>> nodes_;
   std::deque<std::thread> avail_threads;
+  std::deque<SSS_Thread *> threads_;
   std::mutex queue_mutex;
   std::condition_variable condition;
   std::atomic<bool> running;
-  std::counting_semaphore<1> sem{0};
+  std::counting_semaphore<1> sem{0}; // TODO: each thread needs it's own sem
   std::size_t n_threads;
   // current index for round-robin assigning
   std::size_t cur_rr_index{0};

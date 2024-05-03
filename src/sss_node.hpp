@@ -36,13 +36,14 @@ public:
   // for NodeLists
   SSS_Node<T> *next;
 
-  void run_fn() { fun(this, buff_size); }
+  std::size_t run_fn() { return fun(this, buff_size); }
 
   SSS_Node(NodeType type, fn_type fn, int ch, std::size_t s, std::string id)
-      : nt(type), channels(ch), buff_size(s), device_id(id) {
+      : nt(type), channels(ch), buff_size(s * 2), device_id(id) {
     this->fun = fn;
     node_buffer = new SSS_Buffer<T>(s * 4);
     node_queue = new SSS_Fifo<T>(s * 4);
+    std::cout << "BUFF SIZE: " << buff_size << std::endl;
   }
 
   SSS_Node(NodeType type, fn_type fn, int ch, std::size_t s, std::string id,
