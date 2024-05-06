@@ -106,6 +106,13 @@ void mixer_fn(SSS_Mixer<float> *mixer, float *buff, std::size_t n_samples) {
   return;
 }
 
+std::size_t file_fn(SSS_Node<float> *n, std::size_t num_samples) {
+  auto res = n->file->get_buffer(num_samples * n->channels);
+  auto f32_res = convert_s16_to_f32(res, num_samples);
+  n->temp_buffer = f32_res;
+  return num_samples;
+}
+
 int main() {
 
   using fn_type = std::function<std::size_t(SSS_Node<float> *, std::size_t)>;
@@ -115,25 +122,29 @@ int main() {
 
   fn_type fn = gen_sine1;
   fn_type i_fn = input_fn;
+  fn_type f_fn = file_fn;
   fn_data *fn_d1 = new fn_data();
   fn_data *fn_d2 = new fn_data();
   fn_d2->pitch = 328.0;
 
   auto node1 = new SSS_Node<float>(OUTPUT, fn, 2, 1024, "default", fn_d1);
   auto node2 = new SSS_Node<float>(OUTPUT, fn, 2, 1024, "default2", fn_d2);
+  auto node3 =
+      new SSS_Node<float>(FILE_OUT, f_fn, 2, 1024, "default3", "output");
   // node1->next = node2;
   sss_handle->register_mixer_node(node1);
   sss_handle->register_mixer_node(node2);
-  // sss_handle->push_node(OUTPUT, fn, fn_d1, "default");
-  // sss_handle->push_node(OUTPUT, fn, fn_d2, "default");
-  //  sss_handle->push_node(FILE_OUT, nullptr, nullptr, "apx", "output");
-  //  sss_handle->push_node(FILE_INPUT, i_fn, nullptr, "in", "output_test");
+  sss_handle->register_mixer_node(node3);
+  //   sss_handle->push_node(OUTPUT, fn, fn_d1, "default");
+  //   sss_handle->push_node(OUTPUT, fn, fn_d2, "default");
+  //    sss_handle->push_node(FILE_OUT, nullptr, nullptr, "apx", "output");
+  //    sss_handle->push_node(FILE_INPUT, i_fn, nullptr, "in", "output_test");
   sss_handle->init_output_backend();
   // sss_handle->init_input_backend();
-  sss_handle->list_devices();
+  // sss_handle->list_devices();
   sss_handle->start_output_backend();
   // sss_handle->start_input_backend();
-  std::this_thread::sleep_for(std::chrono::seconds(5));
+  std::this_thread::sleep_for(std::chrono::seconds(8));
   sss_handle->pause_output_backend();
   std::cout << "paused!\n";
   return 0;

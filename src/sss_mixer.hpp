@@ -105,13 +105,17 @@ public:
   SSS_Mixer(std::size_t buff_size, bool multithread = false)
       : buff_size(buff_size), run_multithreaded(multithread) {
     mixer_buffer = new SSS_Buffer<T>(buff_size);
-    thread_pool = new SSS_ThreadPool(2);
+    thread_pool = new SSS_ThreadPool(4);
   }
 
   void register_node(SSS_Node<T> *node) {
     // thread_pool->push_node_rr(node);
     thread_pool->register_thread(node);
-    output_nodes.push_back(node);
+
+    if (node->nt == OUTPUT || node->nt == FILE_OUT)
+      output_nodes.push_back(node);
+    else
+      input_nodes.push_back(node);
   }
 
   void new_node(NodeType nt, fn_type fn, int ch, void *fn_data,
@@ -154,8 +158,6 @@ public:
       //  thread_pool->start_threads();
       //   return;
       //}
-      // std::cout << "sig\n";
-      //  thread_pool->signal_all();
       thread_pool->signal_threads();
     } else {
       for (SSS_Node<T> *n : output_nodes) {
@@ -177,22 +179,23 @@ public:
   void sample_mixer_buffer_out(std::size_t n_samples, T **buff) {
     // send some data first, then do the sampling is a
     // better strategy maybe?
-    std::cout << "sampling mixer\n";
     mixer_buffer->read_n(*buff, n_samples);
     scratch_buff = std::vector<T>(n_samples, 0);
     for (auto n : output_nodes) {
       // TODO:
       // move this to a generic file function
+      // if (n->nt == FILE_OUT) {
+      // auto file_res = n->file->get_buffer(n_samples * out_channels);
+      // auto f32_res = convert_s16_to_f32(file_res, n_samples);
+      // if (mixer_fn != nullptr) {
+      // this->mixer_fn(this, f32_res, n_samples);
+      //}
+      //} else {
+      auto cur_node_buff = new T[n_samples];
       if (n->nt == FILE_OUT) {
-        auto file_res = n->file->get_buffer(n_samples * out_channels);
-        auto f32_res = convert_s16_to_f32(file_res, n_samples);
-        if (mixer_fn != nullptr) {
-          this->mixer_fn(this, f32_res, n_samples);
-        }
-      } else {
-        auto cur_node_buff = new T[n_samples];
         // auto res_samples = n->node_buffer->read_n(cur_node_buff, n_samples);
-
+        cur_node_buff = n->temp_buffer;
+      } else {
         float res;
         for (int i = 0; i < n_samples; i++) {
           if (n->node_queue->dequeue(res))
@@ -200,12 +203,12 @@ public:
           else
             std::cout << "err on dequeue!\n";
         }
-
-        //  mix into scratch_buff
-        if (mixer_fn != nullptr) {
-          this->mixer_fn(this, cur_node_buff, n_samples);
-        }
       }
+      //  mix into scratch_buff
+      if (mixer_fn != nullptr) {
+        this->mixer_fn(this, cur_node_buff, n_samples);
+      }
+      //}
       //  then write the scratch_buff to the mixer after
       // mixer_buffer.write_n(scratch_buff.data(), n_samples);
 
@@ -215,14 +218,12 @@ public:
     // mixer_buffer.read_n(*buff, n_samples);
   }
 
-  // TODO: How should this work w/ multithreading?
-  // just wake up all threads?
   void sample_mixer_buffer_in(std::size_t n_bytes, T **buff) {
     if (run_multithreaded) {
-      if (!thread_pool->get_run_status()) {
-        thread_pool->start_threads();
-      }
-      thread_pool->signal_all();
+      // if (!thread_pool->get_run_status()) {
+      //  thread_pool->start_threads();
+      // }
+      thread_pool->signal_threads();
     } else {
       for (auto n : input_nodes) {
         n->temp_buffer = *buff;

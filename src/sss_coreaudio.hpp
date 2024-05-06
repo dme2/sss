@@ -93,7 +93,6 @@ public:
       return -1;
     }
     auto ca_data = (CoreAudioBackend *)user_data;
-    // std::cout << "starting sampling\n";
     ca_data->sss_backend->mixer->sample_output_nodes();
     auto n_bytes = io_data->mBuffers[0].mDataByteSize;
     auto chans = io_data->mBuffers[0].mNumberChannels;
@@ -145,6 +144,7 @@ public:
         std::cout << "could not set up default device\n";
         return false;
       }
+      std::cout << "default device opened\n";
     } else {
       device_id = atoi(out_id.c_str());
     }

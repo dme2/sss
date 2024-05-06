@@ -20,9 +20,10 @@ public:
   void thread_fn_inner() {
     for (;;) {
       // std::cout << "thread awake!\n";
+      // TODO:
+      // progressive backoff here?
       auto res = node_->run_fn();
       sem.acquire();
-      std::cout << res << std::endl;
       // while (res <= 1) {
       //  res = node_->run_fn();
       // }
@@ -198,7 +199,7 @@ public:
 
   void signal_threads() {
     // std::cout << "signaling threads!\n";
-    for (std::size_t i = 0; i < n_threads; i++)
+    for (std::size_t i = 0; i < threads_.size(); i++)
       threads_[i]->wakeup();
     // std::cout << "thread wakeup\n";
     //  sem.acquire();

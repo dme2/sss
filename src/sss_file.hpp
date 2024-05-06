@@ -48,7 +48,6 @@ public:
     file_buffer = content;
     file_size = file_buffer.size();
     read_pos = 0;
-    std::cout << "file read\n";
   }
 
   bool at_file_end() { return read_pos >= file_buffer.size(); }

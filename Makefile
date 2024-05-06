@@ -5,7 +5,7 @@ LDFLAGS= --std=c++20
 all: simple_sound_system
 
 simple_sound_system:
-	$(CC) $(LDFLAGS) $(LIBS) src/main.cc -o $@ -ggdb -g -framework CoreAudio -framework AudioUnit -framework CoreFoundation
+	$(CC) $(LDFLAGS) $(LIBS) src/main.cc -o $@ -ggdb -g -framework CoreAudio -framework AudioUnit -framework CoreFoundation -framework AVFoundation
 
 #sss_threads.o: src/sss_threads.cc
 #	$(CC) $(LDFLAGS) $(LIBS) src/sss_threads.cc  -fext-numeric-literals -c
