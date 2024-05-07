@@ -7,6 +7,9 @@
 #include <semaphore>
 #include <thread>
 
+// TODO:
+// BIG CLEANUP
+
 using fn_type = std::function<void()>;
 
 class SSS_Thread {
@@ -205,10 +208,26 @@ public:
     //  sem.acquire();
   }
 
-  void register_thread(SSS_Node<float> *node) {
+  void signal_in_threads() {
+    // std::cout << "signaling threads!\n";
+    for (std::size_t i = 0; i < in_threads_.size(); i++)
+      in_threads_[i]->wakeup();
+    // std::cout << "thread wakeup\n";
+    //  sem.acquire();
+  }
+
+  void register_thread(SSS_Node<float> *node, bool input = false) {
     auto thread = new SSS_Thread(cur_rr_index++, node);
+    if (cur_rr_index == n_threads)
+      cur_rr_index = 0;
+    else
+      cur_rr_index += 1;
+
     thread->start_thread();
-    threads_.push_back(thread);
+    if (input)
+      in_threads_.push_back(thread);
+    else
+      threads_.push_back(thread);
   }
 
 private:
@@ -217,6 +236,7 @@ private:
   std::vector<std::vector<SSS_Node<float> *>> nodes_;
   std::deque<std::thread> avail_threads;
   std::deque<SSS_Thread *> threads_;
+  std::deque<SSS_Thread *> in_threads_;
   std::mutex queue_mutex;
   std::condition_variable condition;
   std::atomic<bool> running;

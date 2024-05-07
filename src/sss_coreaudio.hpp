@@ -254,7 +254,7 @@ public:
     }
 
     // Print the format details
-    // printf("Sample Rate: %f\n", fmt.mSampleRate);
+    printf("Sample Rate: %f\n", fmt.mSampleRate);
     // printf("Format ID: %u\n", fmt.mFormatID);
     // printf("Format Flags: %u\n", fmt.mFormatFlags);
     // printf("Bytes Per Packet: %u\n", fmt.mBytesPerPacket);

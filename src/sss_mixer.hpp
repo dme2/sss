@@ -95,8 +95,8 @@ public:
   std::vector<SSS_Node<T> *> output_nodes;
   std::vector<SSS_Node<T> *> input_nodes;
   // device_id -> Node
-  std::unordered_map<std::string, SSS_Node<T> *> input_node_map;
-  std::unordered_map<std::string, SSS_Node<T> *> output_node_map;
+  std::unordered_map<int, SSS_Node<T> *> input_node_map;
+  std::unordered_map<int, SSS_Node<T> *> output_node_map;
 
   // mixer function
   std::function<void(SSS_Mixer<T> *mixer, T *buff, std::size_t n_samples)>
@@ -115,7 +115,8 @@ public:
     if (node->nt == OUTPUT || node->nt == FILE_OUT)
       output_nodes.push_back(node);
     else
-      input_nodes.push_back(node);
+      // input_nodes.push_back(node);
+      input_node_map[79] = node;
   }
 
   void new_node(NodeType nt, fn_type fn, int ch, void *fn_data,
@@ -160,6 +161,8 @@ public:
       //}
       thread_pool->signal_threads();
     } else {
+      // TODO:
+      // sampling should take into account sequential nodes
       for (SSS_Node<T> *n : output_nodes) {
         if (n->fun != nullptr) {
           n->run_fn();
@@ -218,19 +221,20 @@ public:
     // mixer_buffer.read_n(*buff, n_samples);
   }
 
+  // TODO:
+  // fixup input node sampling, currently it will write a chunk
+  // of silence before writing actual recorded audio
+  //
+  // also fix the thread pool
   void sample_mixer_buffer_in(std::size_t n_bytes, T **buff) {
     if (run_multithreaded) {
       // if (!thread_pool->get_run_status()) {
       //  thread_pool->start_threads();
       // }
-      thread_pool->signal_threads();
+      thread_pool->signal_in_threads();
     } else {
       for (auto n : input_nodes) {
-        n->temp_buffer = *buff;
-        n->buff_size = n_bytes;
-        if (n->fun != nullptr) {
-          n->run_fn();
-        }
+        n->run_fn();
       }
     }
   }

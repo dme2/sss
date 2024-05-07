@@ -60,6 +60,7 @@ public:
     this->fun = fn;
     node_buffer = new SSS_Buffer<T>(s);
     node_queue = new SSS_Fifo<T>(s * 2);
+    temp_buffer = new float[s];
     if (type == FILE_INPUT)
       file = new SSS_File(file_path, true);
     else

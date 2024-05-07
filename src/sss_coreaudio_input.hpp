@@ -110,6 +110,8 @@ public:
     //        std::endl;
     //       ca_data->render(n_frames, io_data, output_time_stamp);
     //     std::cout << audio_data[100] << std::endl;
+    auto n = ca_data->backend->mixer->input_node_map[79];
+    n->temp_buffer = audio_data;
     ca_data->backend->handle_in(n_bytes, &audio_data);
 
     return noErr;
@@ -244,13 +246,13 @@ public:
 
     // Print the format details
     printf("Sample Rate: %f\n", fmt.mSampleRate);
-    printf("Format ID: %u\n", fmt.mFormatID);
-    printf("Format Flags: %u\n", fmt.mFormatFlags);
-    printf("Bytes Per Packet: %u\n", fmt.mBytesPerPacket);
-    printf("Frames Per Packet: %u\n", fmt.mFramesPerPacket);
-    printf("Bytes Per Frame: %u\n", fmt.mBytesPerFrame);
-    printf("Channels Per Frame: %u\n", fmt.mChannelsPerFrame);
-    printf("Bits Per Channel: %u\n", fmt.mBitsPerChannel);
+    // printf("Format ID: %u\n", fmt.mFormatID);
+    // printf("Format Flags: %u\n", fmt.mFormatFlags);
+    // printf("Bytes Per Packet: %u\n", fmt.mBytesPerPacket);
+    // printf("Frames Per Packet: %u\n", fmt.mFramesPerPacket);
+    // printf("Bytes Per Frame: %u\n", fmt.mBytesPerFrame);
+    // printf("Channels Per Frame: %u\n", fmt.mChannelsPerFrame);
+    // printf("Bits Per Channel: %u\n", fmt.mBitsPerChannel);
 
     return true;
   }
