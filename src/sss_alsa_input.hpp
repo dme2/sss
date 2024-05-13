@@ -3,12 +3,12 @@
 #include <cstdlib>
 #include "sss_backend.hpp"
 
-class AlsaBackend;
+class AlsaInputBackend;
 
-void async_callback(snd_async_handler_t *handler);
+void async_input_callback(snd_async_handler_t *handler);
 
 
-class AlsaBackend {
+class AlsaInputBackend {
 public:
   snd_pcm_t *handle;
   snd_pcm_chmap_t *chmap;
@@ -26,18 +26,17 @@ public:
   int write_frame_count;
   int frame_count; // for output?
   bool paused;
-  std::string out_device;
   std::string in_device;
   int sample_rate;
   snd_pcm_format_t format;
   double sw_latency;
   int bytes_per_frame; int bytes_per_sample; SSS_Backend<float>* sss_backend;
 
-  AlsaBackend(int sample_rate, int channels, int bytes_per_frame,
+  AlsaInputBackend(int sample_rate, int channels, int bytes_per_frame,
               int frame_count)
       : sample_rate(sample_rate), channel_count(channels),
         frame_count(frame_count), bytes_per_frame(bytes_per_frame) {
-    this->out_device = "default";
+    this->in_device = "default";
   }
 
   /*
@@ -78,10 +77,10 @@ public:
   }
 
   // creates a new backend
-  AlsaBackend *init_alsa_out() {
+  AlsaInputBackend *init_alsa_in() {
     int err;
-    err = snd_pcm_open(&this->handle, this->out_device.c_str(),
-                       SND_PCM_STREAM_PLAYBACK, 0);
+    err = snd_pcm_open(&this->handle, this->in_device.c_str(),
+                       SND_PCM_STREAM_CAPTURE, 0);
 
     if (err < 0) {
       std::cout << "err on pcm open";
@@ -143,7 +142,7 @@ public:
 
     snd_async_handler_t *callback_handler;
   
-    snd_async_add_pcm_handler(&callback_handler, this->handle, async_callback, this);
+    snd_async_add_pcm_handler(&callback_handler, this->handle, async_input_callback, this);
 
     return this;
   }
@@ -170,19 +169,16 @@ public:
   }
 };
 
-void async_callback(snd_async_handler_t *handler){
-    AlsaBackend* data = (AlsaBackend*)snd_async_handler_get_callback_private(handler);
+void async_input_callback(snd_async_handler_t *handler){
+    AlsaInputBackend* data = (AlsaInputBackend*)snd_async_handler_get_callback_private(handler);
     auto sss_backend = data->sss_backend;
     sss_backend->mixer->sample_output_nodes();
     snd_pcm_t *pcm_handle = snd_async_handler_get_pcm(handler);
     auto avail = snd_pcm_avail_update(pcm_handle);
-    float* buffer = new float[avail];
-    sss_backend->get(avail, &buffer);
+    float* buffer = new float[data->period_size]; // TODO: channels here?
     auto period_size = data->period_size;
-    while (avail >= period_size) {
-        snd_pcm_writei(pcm_handle, buffer, period_size);
-        avail = snd_pcm_avail_update(pcm_handle);
-    }
+    snd_pcm_readi(pcm_handle, buffer, period_size);
+    sss_backend->handle_in(period_size, &buffer);
   }
 
 
