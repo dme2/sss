@@ -113,14 +113,15 @@ public:
   }
 
   void register_node(SSS_Node<T> *node) {
-    // thread_pool->push_node_rr(node);
-    thread_pool->register_thread(node);
-
-    if (node->nt == OUTPUT || node->nt == FILE_OUT)
+    if (node->nt == OUTPUT || node->nt == FILE_OUT) {
       output_nodes.push_back(node);
-    else
+      thread_pool->register_out_thread(node);
+    }
+    else {
       // input_nodes.push_back(node);
       input_node_map[79] = node;
+      thread_pool->register_in_thread(node);
+    }
   }
 
   void new_node(NodeType nt, fn_type fn, int ch, void *fn_data,
@@ -142,8 +143,8 @@ public:
       if (node->next != nullptr) { // i.e. a sequential node
         auto cur_node = node;
         while (cur_node != nullptr) {
-          thread_pool->push_node_list_fn_rr(cur_node->fun, cur_node,
-                                            cur_node->buff_size);
+          //thread_pool->push_node_list_fn_rr(cur_node->fun, cur_node,
+           //                                 cur_node->buff_size);
           auto cur_node = node->next;
         }
       } else {

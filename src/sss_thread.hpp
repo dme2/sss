@@ -11,7 +11,7 @@ using fn_type = std::function<void()>;
 
 class SSS_Thread {
 public:
-  SSS_Thread(std::size_t idx, SSS_Node<float> *node) : idx_(idx), node_(node) {}
+  SSS_Thread(std::size_t idx, SSS_Node<float> *node=nullptr) : idx_(idx), node_(node) {}
 
   void start_thread() {
     thread = std::thread([this] { this->thread_fn_inner(); });
@@ -21,8 +21,12 @@ public:
     for (;;) {
       // TODO:
       // progressive backoff here?
-      auto res = node_->run_fn();
       sem.acquire();
+      auto res = node_->run_fn();
+      // for(auto &n : nodes_) {
+      //    n->run_fn();
+      // }
+      //
       // while (res <= 1) {
       //  res = node_->run_fn();
       // }
@@ -31,13 +35,19 @@ public:
 
   void wakeup() { sem.release(); }
 
+  void set_node(SSS_Node<float> *node) { this->node_ = node; }
+
+  void push_node(SSS_Node<float>  *node) {
+      this->nodes_.push_back(node);
+  }
+
 private:
   std::size_t idx_;
   // fn_type node_fn_;
   std::thread thread;
   std::counting_semaphore<1> sem{0};
   SSS_Node<float> *node_;
-  std::vector<SSS_Node<float*>> nodes_;
+  std::vector<SSS_Node<float>*> nodes_;
 };
 
 /*
@@ -97,6 +107,15 @@ public:
 
   SSS_ThreadPool(std::size_t n_out_threads, std::size_t n_in_threads)
       : n_out_threads(n_out_threads) {
+          for (int i = 0; i < n_out_threads; i++) {
+              threads_.push_back(new SSS_Thread(i));
+              threads_[i]->start_thread();
+          }
+
+          for (int i = 0; i < n_in_threads; i++) {
+             in_threads_.push_back(new SSS_Thread(i));
+             in_threads_[i]->start_thread();
+          }
 
   }
 
@@ -131,7 +150,7 @@ public:
   }
 
   void signal_all() {
-    std::cout << "signaling\n";
+    //std::cout << "signaling\n";
     sem.release();
   }
 
@@ -167,25 +186,22 @@ public:
   // in a round-robbin fashion
   // how to handle input vs output?
   void register_out_thread(SSS_Node<float> *node) {
-    auto thread = new SSS_Thread(cur_rr_index, node);
+    //auto thread = new SSS_Thread(cur_rr_index, node);
+    threads_[cur_rr_index]->set_node(node);
     if (cur_rr_index == n_out_threads)
       cur_rr_index = 0;
     else
       cur_rr_index += 1;
-
-    thread->start_thread();
-    threads_.push_back(thread);
   }
 
   void register_in_thread(SSS_Node<float> *node) {
-      auto thread = new SSS_Thread(cur_rr_in_index, node);
+      //auto thread = new SSS_Thread(cur_rr_in_index, node);
+
+      in_threads_[cur_rr_in_index]->set_node(node);
       if (cur_rr_in_index == n_in_threads)
         cur_rr_in_index = 0;
       else
         cur_rr_in_index += 1;
-
-      thread->start_thread();
-      threads_.push_back(thread);
     }
 
 private:

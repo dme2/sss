@@ -36,7 +36,7 @@ public:
               std::size_t num_bytes)
       : channels(channels), sample_rate(sample_rate), frame_count(frame_count),
         fmt(fmt) {
-    mixer = new SSS_Mixer<T>(num_bytes, true);
+    mixer = new SSS_Mixer<T>(num_bytes, true, 2, 2);
     fmt_bits = fmt_to_bits(fmt);
     fmt_bytes = fmt_to_bytes(fmt);
     num_bytes = num_bytes;
