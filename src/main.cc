@@ -139,13 +139,13 @@ int main() {
   // node1->next = node2;
   sss_handle->register_mixer_node(node1);
   sss_handle->register_mixer_node(node2);
-  sss_handle->register_mixer_node(node3);
-  sss_handle->register_mixer_node(node4);
+  //sss_handle->register_mixer_node(node3);
+  //sss_handle->register_mixer_node(node4);
   sss_handle->init_input_backend();
   sss_handle->init_output_backend();
   //   sss_handle->list_devices();
   sss_handle->start_output_backend();
-  sss_handle->start_input_backend();
+  //sss_handle->start_input_backend();
   std::this_thread::sleep_for(std::chrono::seconds(8));
   sss_handle->pause_output_backend();
   std::cout << "paused!\n";

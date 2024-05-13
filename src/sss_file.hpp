@@ -26,12 +26,11 @@ public:
 
   void open_file(std::string file_path) {
     in_file = std::ofstream(file_path, std::ios::binary);
-    std::cout << "opening file!\n";
     if (!in_file) {
       std::cerr << "Error: Failed to open file" << std::endl;
       return;
     }
-    std::cout << "file " << file_path << " opened\n";
+    // std::cout << "file " << file_path << " opened\n";
   }
 
   void write_out_bytes(float *buff, std::size_t num_bytes) {
@@ -56,7 +55,6 @@ public:
     if (end_of_file) {
       std::vector<char> out_buffer(num_bytes, 0);
       return out_buffer;
-      std::cout << "EOF!\n";
     }
 
     std::size_t diff = 0;

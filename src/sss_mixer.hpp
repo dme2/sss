@@ -82,6 +82,7 @@ public:
   }
 };
 */
+
 template <typename T> class SSS_Mixer {
 public:
   using fn_type = std::function<std::size_t(SSS_Node<T> *, std::size_t)>;
@@ -102,10 +103,13 @@ public:
   std::function<void(SSS_Mixer<T> *mixer, T *buff, std::size_t n_samples)>
       mixer_fn;
 
-  SSS_Mixer(std::size_t buff_size, bool multithread = false)
+  SSS_Mixer(std::size_t buff_size, bool multithread = false,
+      int mt_output = 0, int mt_input = 0)
       : buff_size(buff_size), run_multithreaded(multithread) {
     mixer_buffer = new SSS_Buffer<T>(buff_size);
-    thread_pool = new SSS_ThreadPool(4);
+    if (multithread) {
+        thread_pool = new SSS_ThreadPool(mt_output, mt_input);
+    }
   }
 
   void register_node(SSS_Node<T> *node) {

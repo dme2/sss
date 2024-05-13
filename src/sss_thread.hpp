@@ -7,9 +7,6 @@
 #include <semaphore>
 #include <thread>
 
-// TODO:
-// BIG CLEANUP
-
 using fn_type = std::function<void()>;
 
 class SSS_Thread {
@@ -22,7 +19,6 @@ public:
 
   void thread_fn_inner() {
     for (;;) {
-      // std::cout << "thread awake!\n";
       // TODO:
       // progressive backoff here?
       auto res = node_->run_fn();
@@ -41,8 +37,10 @@ private:
   std::thread thread;
   std::counting_semaphore<1> sem{0};
   SSS_Node<float> *node_;
+  std::vector<SSS_Node<float*>> nodes_;
 };
 
+/*
 struct spinlock {
   std::atomic<bool> lock_ = {0};
 
@@ -71,10 +69,12 @@ struct spinlock {
 
   void unlock() noexcept { lock_.store(false, std::memory_order_release); }
 };
+*/
 
 class SSS_ThreadPool {
 public:
   // using fn_type = std::function<void()>;
+  /*
   void start_threads(uint32_t n_threads = std::thread::hardware_concurrency()) {
 
     running.store(true, std::memory_order_release);
@@ -93,12 +93,11 @@ public:
       });
     }
   }
+  */
 
-  SSS_ThreadPool(uint32_t n_threads = std::thread::hardware_concurrency())
-      : n_threads(n_threads) {
+  SSS_ThreadPool(std::size_t n_out_threads, std::size_t n_in_threads)
+      : n_out_threads(n_out_threads) {
 
-    tasks_.resize(n_threads);
-    nodes_.resize(n_threads);
   }
 
   ~SSS_ThreadPool() {
@@ -136,19 +135,6 @@ public:
     sem.release();
   }
 
-  // BIG TODO:
-  //  is a progressive backoff spinlock necessary here?
-  //
-  // This function iterates through the tasks associated with each
-  // thread (stored in thread_task_map), executes the task - or
-  // if the task is sequential, traverses the task list and
-  // executes in a sequential manner
-  void eval_tasks(std::size_t idx) {
-    for (auto &t : tasks_[idx]) {
-      t();
-    }
-  }
-
   void eval_node(std::size_t idx) {
     for (auto &n : nodes_[idx]) {
       auto cur_node = n;
@@ -161,43 +147,6 @@ public:
 
   bool get_run_status() { return running.load(std::memory_order_relaxed); }
 
-  template <typename F, typename... Args>
-  void push_node_fn_rr(F &&f, Args &&...args) {
-    {
-      std::unique_lock<std::mutex> lock(queue_mutex);
-      tasks_[cur_rr_index].push_back(
-          std::bind(std::forward<F>(f), std::forward<Args>(args)...));
-
-      if (cur_rr_index == n_threads)
-        cur_rr_index = 0;
-      else
-        cur_rr_index += 1;
-    }
-  }
-
-  void push_node_rr(SSS_Node<float> *n) {
-    {
-      std::unique_lock<std::mutex> lock(queue_mutex);
-      nodes_[cur_rr_index].push_back(n);
-      std::cout << cur_rr_index << std::endl;
-
-      if (cur_rr_index == n_threads)
-        cur_rr_index = 0;
-      else
-        cur_rr_index += 1;
-    }
-  }
-
-  // same as push_node_fn_rr but stays on the same index
-  template <typename F, typename... Args>
-  void push_node_list_fn_rr(F &&f, Args &&...args) {
-    {
-      std::unique_lock<std::mutex> lock(queue_mutex);
-      tasks_[cur_rr_index].push_back(
-          std::bind(std::forward<F>(f), std::forward<Args>(args)...));
-    }
-  }
-
   void increment_rr_index() { cur_rr_index += 1; }
 
   void signal_threads() {
@@ -209,26 +158,35 @@ public:
   }
 
   void signal_in_threads() {
-    // std::cout << "signaling threads!\n";
     for (std::size_t i = 0; i < in_threads_.size(); i++)
       in_threads_[i]->wakeup();
-    // std::cout << "thread wakeup\n";
-    //  sem.acquire();
   }
 
-  void register_thread(SSS_Node<float> *node, bool input = false) {
-    auto thread = new SSS_Thread(cur_rr_index++, node);
-    if (cur_rr_index == n_threads)
+  // TODO:
+  //  fix the algo so that it's actually assigning nodes to threads
+  // in a round-robbin fashion
+  // how to handle input vs output?
+  void register_out_thread(SSS_Node<float> *node) {
+    auto thread = new SSS_Thread(cur_rr_index, node);
+    if (cur_rr_index == n_out_threads)
       cur_rr_index = 0;
     else
       cur_rr_index += 1;
 
     thread->start_thread();
-    if (input)
-      in_threads_.push_back(thread);
-    else
-      threads_.push_back(thread);
+    threads_.push_back(thread);
   }
+
+  void register_in_thread(SSS_Node<float> *node) {
+      auto thread = new SSS_Thread(cur_rr_in_index, node);
+      if (cur_rr_in_index == n_in_threads)
+        cur_rr_in_index = 0;
+      else
+        cur_rr_in_index += 1;
+
+      thread->start_thread();
+      threads_.push_back(thread);
+    }
 
 private:
   std::deque<fn_type> tasks;
@@ -240,10 +198,11 @@ private:
   std::mutex queue_mutex;
   std::condition_variable condition;
   std::atomic<bool> running;
-  std::counting_semaphore<1> sem{0}; // TODO: each thread needs it's own sem
-  std::size_t n_threads;
-  // current index for round-robin assigning
+  std::counting_semaphore<1> sem{0};
+  std::size_t n_out_threads;
+  std::size_t n_in_threads;
   std::size_t cur_rr_index{0};
+  std::size_t cur_rr_in_index{0};
 
   bool stop;
 };
