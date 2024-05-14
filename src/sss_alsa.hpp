@@ -1,7 +1,9 @@
 #include <alsa/asoundlib.h>
 #include <alsa/global.h>
 #include <cstdlib>
-#include "sss_backend.hpp"
+//#include "sss_backend.hpp"
+
+#include "sss_alsa_input.hpp"
 
 class AlsaBackend;
 
@@ -142,7 +144,7 @@ public:
     snd_pcm_sw_params(this->handle, sw_params);
 
     snd_async_handler_t *callback_handler;
-  
+
     snd_async_add_pcm_handler(&callback_handler, this->handle, async_callback, this);
 
     return this;
@@ -184,5 +186,3 @@ void async_callback(snd_async_handler_t *handler){
         avail = snd_pcm_avail_update(pcm_handle);
     }
   }
-
-

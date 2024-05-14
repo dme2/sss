@@ -5,12 +5,15 @@ set(CMAKE_MODULE_PATH ${SSS_SOURCE_DIR}/cmake ${CMAKE_MODULE_PATH})
 add_executable(sss src/main.cc)
 
 set_target_properties(sss PROPERTIES
-  CXX_STANDARD 20 
+  CXX_STANDARD 20
   CXX_STANDARD_REQUIRED ON
   CXX_EXTENSIONS OFF
 )
 
-option(ENABLE_ALSA "Enable ALSA backend" ON)
+include(CheckIncludeFileCXX)
+
+# Set options
+option(ENABLE_ALSA "Enable ALSA backend" OFF)
 option(ENABLE_COREAUDIO "Enable CoreAudio backend" ON)
 
 if(ENABLE_ALSA)
@@ -19,6 +22,11 @@ if(ENABLE_ALSA)
         set(STATUS_ALSA "OK")
         set(SSS_HAVE_ALSA true)
         include_directories(${ALSA_INCLUDE_DIRS})
+        check_include_file_cxx(alsa/asoundlib.h SSS_HAVE_ALSA)
+        if(SSS_HAVE_ALSA)
+            target_compile_definitions(sss PRIVATE SSS_HAVE_ALSA=1)
+            target_link_libraries(sss PRIVATE ${ALSA_LIBRARIES})
+        endif()
     else()
         set(STATUS_ALSA "not found")
         set(SSS_HAVE_ALSA false)
@@ -44,6 +52,12 @@ if(ENABLE_COREAUDIO)
         find_path(AUDIOUNIT_INCLUDE_DIR NAMES AudioUnit.h)
         find_library(AUDIOUNIT_LIBRARY NAMES AudioUnit)
         include_directories(${AUDIOUNIT_INCLUDE_DIR})
+
+        check_include_file_cxx(CoreAudio/CoreAudio.h SSS_HAVE_COREAUDIO)
+        if (SSS_HAVE_COREAUDIO)
+            target_compile_definitions(sss PRIVATE SSS_HAVE_COREAUDIO=1)
+            target_link_libraries(sss PRIVATE ${COREAUDIO_LIBRARY} ${COREFOUNDATION_LIBRARY} ${AUDIOUNIT_LIBRARY})
+        endif()
     else()
         set(STATUS_COREAUDIO "not found")
         set(SOUNDIO_HAVE_COREAUDIO false)
@@ -59,18 +73,19 @@ else()
     set(AUDIOUNIT_LIBRARY "")
 endif()
 
-
-
 find_library(AUDIO_UNIT_LIBRARY AudioUnit REQUIRED)
 find_library(CORE_AUDIO_LIBRARY CoreAudio REQUIRED)
 find_library(COREFOUNDATION_LIBRARY CoreFoundation REQUIRED)
 find_library(AVFOUNDATION_LIBRARY AVFoundation REQUIRED)
 
-# Include directories
-#include_directories(include)
+# Link libraries for the executable
+target_link_libraries(sss PUBLIC ${AUDIO_UNIT_LIBRARY} ${CORE_AUDIO_LIBRARY} ${COREFOUNDATION_LIBRARY} ${AVFOUNDATION_LIBRARY})
 
 # Compiler options
-target_compile_options(sss PRIVATE  -Wall -ggdb -g)
+target_compile_options(sss PRIVATE -Wall -ggdb -g)
 
-# Link libraries
-target_link_libraries(sss PUBLIC ${AUDIO_UNIT_LIBRARY} ${CORE_AUDIO_LIBRARY} ${COREFOUNDATION_LIBRARY}  ${AVFOUNDATION_LIBRARY})
+# Configure file
+configure_file(
+    "${SSS_SOURCE_DIR}/src/config.h.in"
+    "${SSS_SOURCE_DIR}/src/config.h"
+)

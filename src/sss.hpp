@@ -1,6 +1,13 @@
-// #include "sss_backend.hpp" // includes mixer
+#include "config.h"
+
+#if SSS_HAVE_COREAUDIO
 #include "sss_coreaudio.hpp"
-// #include "sss_coreaudio_input.hpp"
+#endif
+
+#if SSS_HAVE_ALSA
+#include "sss_alsa.hpp"
+#endif
+
 
 // the aim of this file is to expose a good portion of the
 // simple sound system api
@@ -23,14 +30,17 @@ public:
   std::size_t n_bytes;
   uint8_t bits_per_sample;
   uint8_t bytes_per_frame;
+  SSS_Backend<T> *sss_backend; // holds mixer handle
 
-  // #IF USE_CORE
+  #if SSS_HAVE_COREAUDIO
   CoreAudioBackend<T> *ca_backend;
   CoreAudioInputBackend<T> *ca_input_backend;
-  SSS_Backend<T> *sss_backend; // holds mixer handle
-  // #ENDIF
-  // #IF USE_ALSA
-  // #ENDIF
+  #endif
+
+  #if SSS_HAVE_ALSA
+  AlsaAlsaBackend *alsa_backend;
+  AlsaAlsaInputBackend *alsa_input_backend;
+  #endif
 
   void push_node(NodeType nt, fn_type fn, void *fn_data,
                  std::string device_id = "default", std::string fp = "") {

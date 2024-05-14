@@ -1,7 +1,7 @@
 #ifndef SSS_CONFIG_H
-#define SSS_CONFIG_H 
+#define SSS_CONFIG_H
 
-#cmakedefine SSS_HAVE_ALSA
-#cmakedefine SSS_HAVE_COREAUDIO
+#cmakedefine01 SSS_HAVE_ALSA
+#cmakedefine01 SSS_HAVE_COREAUDIO
 
 #endif

@@ -1,11 +1,8 @@
-#define HAVE_ALSA false
-#define HAVE_CORE true
-
-// #if HAVE_ALSA
+// #if SSS_HAVE_ALSA
 // #include "sss_alsa.hpp"
 // #endif
 
-// #if HAVE_CORE
+// #if SSS_HAVE_CORE
 // #include "sss_coreaudio.hpp"
 // #endif
 #include "sss_mixer.hpp"
