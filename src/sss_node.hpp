@@ -45,6 +45,9 @@ public:
     this->fun = fn;
     node_buffer = new SSS_Buffer<T>(s * 4);
     node_queue = new SSS_Fifo<T>(s * 4);
+
+    for (std::size_t i = 0; i < s*4; i++)
+        node_queue->enqueue(0);
   }
 
   SSS_Node(NodeType type, fn_type fn, int ch, std::size_t s, std::string id,
@@ -53,6 +56,9 @@ public:
     this->fun = fn;
     node_buffer = new SSS_Buffer<T>(s * 4);
     node_queue = new SSS_Fifo<T>(s * 4);
+
+    for (std::size_t i = 0; i < s*4; i++)
+        node_queue->enqueue(0.0);
   }
 
   SSS_Node(NodeType type, fn_type fn, int ch, std::size_t s, std::string id,

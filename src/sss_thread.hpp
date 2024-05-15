@@ -22,10 +22,10 @@ public:
       // TODO:
       // progressive backoff here?
       sem.acquire();
-      auto res = node_->run_fn();
-      // for(auto &n : nodes_) {
-      //    n->run_fn();
-      // }
+      // auto res = node_->run_fn();
+       for(auto &n : nodes_) {
+          n->run_fn();
+       }
       //
       // while (res <= 1) {
       //  res = node_->run_fn();
@@ -108,13 +108,15 @@ public:
   SSS_ThreadPool(std::size_t n_out_threads, std::size_t n_in_threads)
       : n_out_threads(n_out_threads) {
           for (int i = 0; i < n_out_threads; i++) {
-              threads_.push_back(new SSS_Thread(i));
-              threads_[i]->start_thread();
+              auto new_thread = new SSS_Thread(i);
+              threads_.push_back(new_thread);
+              new_thread->start_thread();
           }
 
           for (int i = 0; i < n_in_threads; i++) {
-             in_threads_.push_back(new SSS_Thread(i));
-             in_threads_[i]->start_thread();
+             auto new_thread = new SSS_Thread(i);
+             in_threads_.push_back(new_thread);
+             new_thread->start_thread();
           }
 
   }
@@ -187,7 +189,8 @@ public:
   // how to handle input vs output?
   void register_out_thread(SSS_Node<float> *node) {
     //auto thread = new SSS_Thread(cur_rr_index, node);
-    threads_[cur_rr_index]->set_node(node);
+    //threads_[cur_rr_index]->set_node(node);
+    threads_[cur_rr_index]->push_node(node);
     if (cur_rr_index == n_out_threads)
       cur_rr_index = 0;
     else
@@ -197,7 +200,8 @@ public:
   void register_in_thread(SSS_Node<float> *node) {
       //auto thread = new SSS_Thread(cur_rr_in_index, node);
 
-      in_threads_[cur_rr_in_index]->set_node(node);
+      //in_threads_[cur_rr_in_index]->set_node(node);
+      in_threads_[cur_rr_in_index]->push_node(node);
       if (cur_rr_in_index == n_in_threads)
         cur_rr_in_index = 0;
       else

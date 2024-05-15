@@ -115,12 +115,14 @@ public:
   void register_node(SSS_Node<T> *node) {
     if (node->nt == OUTPUT || node->nt == FILE_OUT) {
       output_nodes.push_back(node);
-      thread_pool->register_out_thread(node);
+      if (run_multithreaded)
+        thread_pool->register_out_thread(node);
     }
     else {
       // input_nodes.push_back(node);
       input_node_map[79] = node;
-      thread_pool->register_in_thread(node);
+      if (run_multithreaded)
+        thread_pool->register_in_thread(node);
     }
   }
 
