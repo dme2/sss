@@ -5,7 +5,7 @@
 #include <thread>
 
 // TODOs
-// [] nodes should be associated with a particular device ?
+// [x] nodes should be associated with a particular device ?
 // [] set node channel data from deviceid
 // [x] fix coreaudio input
 // [x] improve file handling

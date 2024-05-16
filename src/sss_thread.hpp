@@ -191,10 +191,9 @@ public:
     //auto thread = new SSS_Thread(cur_rr_index, node);
     //threads_[cur_rr_index]->set_node(node);
     threads_[cur_rr_index]->push_node(node);
+    cur_rr_index += 1;
     if (cur_rr_index == n_out_threads)
       cur_rr_index = 0;
-    else
-      cur_rr_index += 1;
   }
 
   void register_in_thread(SSS_Node<float> *node) {
@@ -202,10 +201,9 @@ public:
 
       //in_threads_[cur_rr_in_index]->set_node(node);
       in_threads_[cur_rr_in_index]->push_node(node);
+      cur_rr_in_index += 1;
       if (cur_rr_in_index == n_in_threads)
         cur_rr_in_index = 0;
-      else
-        cur_rr_in_index += 1;
     }
 
 private:

@@ -3,9 +3,23 @@ project(SSS VERSION 0.1 DESCRIPTION "A simple sound system" LANGUAGES CXX)
 set(CMAKE_MODULE_PATH ${SSS_SOURCE_DIR}/cmake ${CMAKE_MODULE_PATH})
 
 add_executable(sss src/main.cc)
+add_executable(sss_sine src/examples/sss_sine.cc)
+add_executable(sss_record src/examples/sss_record.cc)
 
 set_target_properties(sss PROPERTIES
-  CXX_STANDARD 20
+  CXX_STANDARD 17
+  CXX_STANDARD_REQUIRED ON
+  CXX_EXTENSIONS OFF
+)
+
+set_target_properties(sss_sine PROPERTIES
+  CXX_STANDARD 17
+  CXX_STANDARD_REQUIRED ON
+  CXX_EXTENSIONS OFF
+)
+
+set_target_properties(sss_record PROPERTIES
+  CXX_STANDARD 17
   CXX_STANDARD_REQUIRED ON
   CXX_EXTENSIONS OFF
 )
@@ -80,6 +94,8 @@ find_library(AVFOUNDATION_LIBRARY AVFoundation REQUIRED)
 
 # Link libraries for the executable
 target_link_libraries(sss PUBLIC ${AUDIO_UNIT_LIBRARY} ${CORE_AUDIO_LIBRARY} ${COREFOUNDATION_LIBRARY} ${AVFOUNDATION_LIBRARY})
+target_link_libraries(sss_sine PUBLIC ${AUDIO_UNIT_LIBRARY} ${CORE_AUDIO_LIBRARY} ${COREFOUNDATION_LIBRARY} ${AVFOUNDATION_LIBRARY})
+target_link_libraries(sss_record PUBLIC ${AUDIO_UNIT_LIBRARY} ${CORE_AUDIO_LIBRARY} ${COREFOUNDATION_LIBRARY} ${AVFOUNDATION_LIBRARY})
 
 # Compiler options
 target_compile_options(sss PRIVATE -Wall -ggdb -g)

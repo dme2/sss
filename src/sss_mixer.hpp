@@ -115,8 +115,10 @@ public:
   void register_node(SSS_Node<T> *node) {
     if (node->nt == OUTPUT || node->nt == FILE_OUT) {
       output_nodes.push_back(node);
-      if (run_multithreaded)
+      if (run_multithreaded) {
         thread_pool->register_out_thread(node);
+        std::cout << "pushed node mt\n";
+      }
     }
     else {
       // input_nodes.push_back(node);

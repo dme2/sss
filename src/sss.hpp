@@ -67,7 +67,12 @@ public:
   }
 
   void set_mixer_fn(mixer_fn m_fn) { sss_backend->set_mixer_fn(m_fn); }
-  void init_output_backend() { ca_backend->ca_open(); }
+  void init_output_backend() {
+      // warmup our nodes
+      // TODO: probably want a safer way to do this
+      sss_backend->mixer->sample_output_nodes();
+      ca_backend->ca_open();
+  }
   void init_input_backend() { ca_input_backend->ca_open_input(); }
   void start_output_backend() { ca_backend->start(); }
   void start_input_backend() { ca_input_backend->start_input(); }
