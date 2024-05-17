@@ -11,6 +11,8 @@
 // [x] improve file handling
 // [x] thread pool for node functions
 
+// this file is mostly just a placeholder for various tests and examples
+
 struct fn_data {
   double pitch{440.0};
   double phase{0.0};

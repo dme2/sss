@@ -56,14 +56,18 @@ public:
       : channels(channels), rate(rate), frame_count(frame_count) {
     bits_per_sample = sizeof(T) * 8;
     bytes_per_frame = channels * (bits_per_sample / 8);
-    ca_backend = new CoreAudioBackend<T>(rate, bits_per_sample, channels,
-                                         bytes_per_frame, frame_count, fmt);
     n_bytes = frame_count * channels * sizeof(T);
     sss_backend = new SSS_Backend<T>(channels, rate, frame_count, fmt, n_bytes);
+
+    #if SSS_HAVE_COREAUDIO
+    ca_backend = new CoreAudioBackend<T>(rate, bits_per_sample, channels,
+                                         bytes_per_frame, frame_count, fmt);
     ca_backend->sss_backend = sss_backend;
     ca_input_backend = new CoreAudioInputBackend<T>(
         rate, bits_per_sample, channels, bytes_per_frame, frame_count, fmt);
     ca_input_backend->backend = sss_backend;
+    #endif
+
   }
 
   void set_mixer_fn(mixer_fn m_fn) { sss_backend->set_mixer_fn(m_fn); }
