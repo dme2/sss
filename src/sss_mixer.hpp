@@ -99,6 +99,8 @@ public:
   std::unordered_map<int, SSS_Node<T> *> input_node_map;
   std::unordered_map<int, SSS_Node<T> *> output_node_map;
 
+  SSS_NodeList<T>* mixer_node_list;
+
   // mixer function
   std::function<void(SSS_Mixer<T> *mixer, T *buff, std::size_t n_samples)>
       mixer_fn;
