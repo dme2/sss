@@ -99,32 +99,35 @@ public:
   std::unordered_map<int, SSS_Node<T> *> input_node_map;
   std::unordered_map<int, SSS_Node<T> *> output_node_map;
 
-  SSS_NodeList<T>* mixer_node_list;
+  SSS_NodeList<T> *input_node_list;
+  SSS_NodeList<T> *output_node_list;
 
   // mixer function
   std::function<void(SSS_Mixer<T> *mixer, T *buff, std::size_t n_samples)>
       mixer_fn;
 
-  SSS_Mixer(std::size_t buff_size, bool multithread = false,
-      int mt_output = 0, int mt_input = 0)
+  SSS_Mixer(std::size_t buff_size, bool multithread = false, int mt_output = 0,
+            int mt_input = 0)
       : buff_size(buff_size), run_multithreaded(multithread) {
     mixer_buffer = new SSS_Buffer<T>(buff_size);
     if (multithread) {
-        thread_pool = new SSS_ThreadPool(mt_output, mt_input);
+      std::cout << "multithreaded!\n";
+      thread_pool = new SSS_ThreadPool(mt_output, mt_input);
     }
+    output_node_list = new SSS_NodeList<T>;
+    input_node_list = new SSS_NodeList<T>;
   }
 
   void register_node(SSS_Node<T> *node) {
     if (node->nt == OUTPUT || node->nt == FILE_OUT) {
-      output_nodes.push_back(node);
+      // output_nodes.push_back(node);
+      output_node_list->add_node(node);
       if (run_multithreaded) {
         thread_pool->register_out_thread(node);
-        std::cout << "pushed node mt\n";
       }
-    }
-    else {
-      // input_nodes.push_back(node);
+    } else {
       input_node_map[79] = node;
+      input_node_list->add_node(node);
       if (run_multithreaded)
         thread_pool->register_in_thread(node);
     }
@@ -149,8 +152,8 @@ public:
       if (node->next != nullptr) { // i.e. a sequential node
         auto cur_node = node;
         while (cur_node != nullptr) {
-          //thread_pool->push_node_list_fn_rr(cur_node->fun, cur_node,
-           //                                 cur_node->buff_size);
+          // thread_pool->push_node_list_fn_rr(cur_node->fun, cur_node,
+          //                                  cur_node->buff_size);
           auto cur_node = node->next;
         }
       } else {
@@ -174,12 +177,13 @@ public:
     } else {
       // TODO:
       // sampling should take into account sequential nodes
-      for (SSS_Node<T> *n : output_nodes) {
-        if (n->fun != nullptr) {
-          n->run_fn();
-          // thread_pool->enqueue(n->fun, n, n->buff_size);
-        }
-      }
+      output_node_list->traverse_list_and_run();
+      // for (SSS_Node<T> *n : output_nodes) {
+      //  if (n->fun != nullptr) {
+      //   n->run_fn();
+      //  thread_pool->enqueue(n->fun, n, n->buff_size);
+      // }
+      // }
     }
   }
 
@@ -195,19 +199,13 @@ public:
     // better strategy maybe?
     mixer_buffer->read_n(*buff, n_samples);
     scratch_buff = std::vector<T>(n_samples, 0);
-    for (auto n : output_nodes) {
-      // TODO:
-      // move this to a generic file function
-      // if (n->nt == FILE_OUT) {
-      // auto file_res = n->file->get_buffer(n_samples * out_channels);
-      // auto f32_res = convert_s16_to_f32(file_res, n_samples);
-      // if (mixer_fn != nullptr) {
-      // this->mixer_fn(this, f32_res, n_samples);
-      //}
-      //} else {
+
+    auto n = output_node_list->head;
+    while (n != nullptr) {
       auto cur_node_buff = new T[n_samples];
       if (n->nt == FILE_OUT) {
-        // auto res_samples = n->node_buffer->read_n(cur_node_buff, n_samples);
+        // auto res_samples = n->node_buffer->read_n(cur_node_buff,
+        // n_samples);
         cur_node_buff = n->temp_buffer;
       } else {
         float res;
@@ -222,12 +220,45 @@ public:
       if (mixer_fn != nullptr) {
         this->mixer_fn(this, cur_node_buff, n_samples);
       }
-      //}
-      //  then write the scratch_buff to the mixer after
-      // mixer_buffer.write_n(scratch_buff.data(), n_samples);
 
-      // mixer_buffer.write_n(cur_node_buff, res_samples);
+      n = n->next;
     }
+    /*
+        for (auto n : output_nodes) {
+          // TODO:
+          // move this to a generic file function
+          // if (n->nt == FILE_OUT) {
+          // auto file_res = n->file->get_buffer(n_samples * out_channels);
+          // auto f32_res = convert_s16_to_f32(file_res, n_samples);
+          // if (mixer_fn != nullptr) {
+          // this->mixer_fn(this, f32_res, n_samples);
+          //}
+          //} else {
+          auto cur_node_buff = new T[n_samples];
+          if (n->nt == FILE_OUT) {
+            // auto res_samples = n->node_buffer->read_n(cur_node_buff,
+            // n_samples);
+            cur_node_buff = n->temp_buffer;
+          } else {
+            float res;
+            for (int i = 0; i < n_samples; i++) {
+              if (n->node_queue->dequeue(res))
+                cur_node_buff[i] = res;
+              else
+                std::cout << "err on dequeue!\n";
+            }
+          }
+          //  mix into scratch_buff
+          if (mixer_fn != nullptr) {
+            this->mixer_fn(this, cur_node_buff, n_samples);
+          }
+          //}
+          //  then write the scratch_buff to the mixer after
+          // mixer_buffer.write_n(scratch_buff.data(), n_samples);
+
+          // mixer_buffer.write_n(cur_node_buff, res_samples);
+        }
+        */
     mixer_buffer->write_n(scratch_buff.data(), n_samples);
     // mixer_buffer.read_n(*buff, n_samples);
   }

@@ -8,7 +8,6 @@
 #include "sss_alsa.hpp"
 #endif
 
-
 // the aim of this file is to expose a good portion of the
 // simple sound system api
 // such as
@@ -32,15 +31,15 @@ public:
   uint8_t bytes_per_frame;
   SSS_Backend<T> *sss_backend; // holds mixer handle
 
-  #if SSS_HAVE_COREAUDIO
+#if SSS_HAVE_COREAUDIO
   CoreAudioBackend<T> *ca_backend;
   CoreAudioInputBackend<T> *ca_input_backend;
-  #endif
+#endif
 
-  #if SSS_HAVE_ALSA
+#if SSS_HAVE_ALSA
   AlsaAlsaBackend *alsa_backend;
   AlsaAlsaInputBackend *alsa_input_backend;
-  #endif
+#endif
 
   void push_node(NodeType nt, fn_type fn, void *fn_data,
                  std::string device_id = "default", std::string fp = "") {
@@ -52,30 +51,31 @@ public:
     this->sss_backend->mixer->register_node(node);
   }
 
-  SSS(std::size_t frame_count, uint8_t channels, int32_t rate, SSS_FMT fmt)
+  SSS(std::size_t frame_count, uint8_t channels, int32_t rate, SSS_FMT fmt,
+      bool run_multithreaded = false, int mt_out = 0, int mt_in = 0)
       : channels(channels), rate(rate), frame_count(frame_count) {
     bits_per_sample = sizeof(T) * 8;
     bytes_per_frame = channels * (bits_per_sample / 8);
     n_bytes = frame_count * channels * sizeof(T);
-    sss_backend = new SSS_Backend<T>(channels, rate, frame_count, fmt, n_bytes);
+    sss_backend = new SSS_Backend<T>(channels, rate, frame_count, fmt, n_bytes,
+                                     run_multithreaded, mt_out, mt_in);
 
-    #if SSS_HAVE_COREAUDIO
+#if SSS_HAVE_COREAUDIO
     ca_backend = new CoreAudioBackend<T>(rate, bits_per_sample, channels,
                                          bytes_per_frame, frame_count, fmt);
     ca_backend->sss_backend = sss_backend;
     ca_input_backend = new CoreAudioInputBackend<T>(
         rate, bits_per_sample, channels, bytes_per_frame, frame_count, fmt);
     ca_input_backend->backend = sss_backend;
-    #endif
-
+#endif
   }
 
   void set_mixer_fn(mixer_fn m_fn) { sss_backend->set_mixer_fn(m_fn); }
   void init_output_backend() {
-      // warmup our nodes
-      // TODO: probably want a safer way to do this
-      sss_backend->mixer->sample_output_nodes();
-      ca_backend->ca_open();
+    // warmup our nodes
+    // TODO: probably want a safer way to do this
+    sss_backend->mixer->sample_output_nodes();
+    ca_backend->ca_open();
   }
   void init_input_backend() { ca_input_backend->ca_open_input(); }
   void start_output_backend() { ca_backend->start(); }

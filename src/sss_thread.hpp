@@ -11,7 +11,10 @@ using fn_type = std::function<void()>;
 
 class SSS_Thread {
 public:
-  SSS_Thread(std::size_t idx, SSS_Node<float> *node=nullptr) : idx_(idx), node_(node) {}
+  SSS_Thread(std::size_t idx, SSS_Node<float> *node = nullptr)
+      : idx_(idx), node_(node) {
+    node_list_ = new SSS_NodeList<float>();
+  }
 
   void start_thread() {
     thread = std::thread([this] { this->thread_fn_inner(); });
@@ -22,14 +25,16 @@ public:
       // TODO:
       // progressive backoff here?
       sem.acquire();
-      // auto res = node_->run_fn();
-       for(auto &n : nodes_) {
-          n->run_fn();
-       }
+      for (auto &n : nodes_) {
+        n->run_fn();
+      }
+
+      // node_list_->traverse_list_and_run();
+
       //
-      // while (res <= 1) {
-      //  res = node_->run_fn();
-      // }
+      //  while (res <= 1) {
+      //   res = node_->run_fn();
+      //  }
     }
   }
 
@@ -37,9 +42,7 @@ public:
 
   void set_node(SSS_Node<float> *node) { this->node_ = node; }
 
-  void push_node(SSS_Node<float>  *node) {
-      this->nodes_.push_back(node);
-  }
+  void push_node(SSS_Node<float> *node) { this->nodes_.push_back(node); }
 
 private:
   std::size_t idx_;
@@ -47,7 +50,8 @@ private:
   std::thread thread;
   std::counting_semaphore<1> sem{0};
   SSS_Node<float> *node_;
-  std::vector<SSS_Node<float>*> nodes_;
+  SSS_NodeList<float> *node_list_;
+  std::vector<SSS_Node<float> *> nodes_;
 };
 
 /*
@@ -107,18 +111,17 @@ public:
 
   SSS_ThreadPool(std::size_t n_out_threads, std::size_t n_in_threads)
       : n_out_threads(n_out_threads) {
-          for (int i = 0; i < n_out_threads; i++) {
-              auto new_thread = new SSS_Thread(i);
-              threads_.push_back(new_thread);
-              new_thread->start_thread();
-          }
+    for (int i = 0; i < n_out_threads; i++) {
+      auto new_thread = new SSS_Thread(i);
+      threads_.push_back(new_thread);
+      new_thread->start_thread();
+    }
 
-          for (int i = 0; i < n_in_threads; i++) {
-             auto new_thread = new SSS_Thread(i);
-             in_threads_.push_back(new_thread);
-             new_thread->start_thread();
-          }
-
+    for (int i = 0; i < n_in_threads; i++) {
+      auto new_thread = new SSS_Thread(i);
+      in_threads_.push_back(new_thread);
+      new_thread->start_thread();
+    }
   }
 
   ~SSS_ThreadPool() {
@@ -152,7 +155,7 @@ public:
   }
 
   void signal_all() {
-    //std::cout << "signaling\n";
+    // std::cout << "signaling\n";
     sem.release();
   }
 
@@ -171,11 +174,8 @@ public:
   void increment_rr_index() { cur_rr_index += 1; }
 
   void signal_threads() {
-    // std::cout << "signaling threads!\n";
     for (std::size_t i = 0; i < threads_.size(); i++)
       threads_[i]->wakeup();
-    // std::cout << "thread wakeup\n";
-    //  sem.acquire();
   }
 
   void signal_in_threads() {
@@ -184,12 +184,12 @@ public:
   }
 
   // TODO:
-  //  fix the algo so that it's actually assigning nodes to threads
-  // in a round-robbin fashion
-  // how to handle input vs output?
+  // need to handle the node graph more sensibly
+  // should probably rebuild each threads node vector
+  // when we add *or* delete a node
   void register_out_thread(SSS_Node<float> *node) {
-    //auto thread = new SSS_Thread(cur_rr_index, node);
-    //threads_[cur_rr_index]->set_node(node);
+    // auto thread = new SSS_Thread(cur_rr_index, node);
+    // threads_[cur_rr_index]->set_node(node);
     threads_[cur_rr_index]->push_node(node);
     cur_rr_index += 1;
     if (cur_rr_index == n_out_threads)
@@ -197,14 +197,14 @@ public:
   }
 
   void register_in_thread(SSS_Node<float> *node) {
-      //auto thread = new SSS_Thread(cur_rr_in_index, node);
+    // auto thread = new SSS_Thread(cur_rr_in_index, node);
 
-      //in_threads_[cur_rr_in_index]->set_node(node);
-      in_threads_[cur_rr_in_index]->push_node(node);
-      cur_rr_in_index += 1;
-      if (cur_rr_in_index == n_in_threads)
-        cur_rr_in_index = 0;
-    }
+    // in_threads_[cur_rr_in_index]->set_node(node);
+    in_threads_[cur_rr_in_index]->push_node(node);
+    cur_rr_in_index += 1;
+    if (cur_rr_in_index == n_in_threads)
+      cur_rr_in_index = 0;
+  }
 
 private:
   std::deque<fn_type> tasks;

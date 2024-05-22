@@ -11,7 +11,7 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
-#
+
 // N.B. FILE_OUT = reading + playing an audio file
 //      FILE_IN  = write audio to a file
 enum NodeType { OUTPUT, INPUT, FILE_OUT, FILE_INPUT };
@@ -36,8 +36,8 @@ public:
   std::size_t run_fn() { return fun(this, buff_size); }
 
   // for node lists
-  SSS_Node<T>* next;
-  SSS_Node<T>* prev;
+  SSS_Node<T> *next;
+  SSS_Node<T> *prev;
 
   // TODO:
   // should probably figure out optimal buffer sizes here
@@ -47,10 +47,8 @@ public:
     node_buffer = new SSS_Buffer<T>(s * 4);
     node_queue = new SSS_Fifo<T>(s * 4);
 
-    for (std::size_t i = 0; i < s*4; i++)
-        node_queue->enqueue(0);
-
-
+    for (std::size_t i = 0; i < s * 4; i++)
+      node_queue->enqueue(0);
   }
 
   SSS_Node(NodeType type, fn_type fn, int ch, std::size_t s, std::string id,
@@ -60,10 +58,8 @@ public:
     node_buffer = new SSS_Buffer<T>(s * 4);
     node_queue = new SSS_Fifo<T>(s * 4);
 
-
-    for (std::size_t i = 0; i < s*4; i++)
-        node_queue->enqueue(0);
-
+    for (std::size_t i = 0; i < s * 4; i++)
+      node_queue->enqueue(0);
   }
 
   SSS_Node(NodeType type, fn_type fn, int ch, std::size_t s, std::string id,
@@ -85,75 +81,74 @@ public:
   }
 };
 
-template <typename T>
-struct SSS_NodeList {
-    SSS_Node<T>* head;
-    SSS_Node<T>* tail;
+template <typename T> struct SSS_NodeList {
+  SSS_Node<T> *head;
+  SSS_Node<T> *tail;
 
-    // index->node
-    std::unordered_map<size_t, SSS_Node<T>*> node_idx_map;
-    // name->node
-    std::unordered_map<std::string, SSS_Node<T>*> node_str_map;
+  // index->node
+  std::unordered_map<size_t, SSS_Node<T> *> node_idx_map;
+  // name->node
+  std::unordered_map<std::string, SSS_Node<T> *> node_str_map;
 
-
-    void add_node(SSS_Node<T>* node) {
-        if (head == nullptr) {
-            head = node;
-            tail = node;
-        }
-        else {
-            auto prev = tail;
-            prev->next = node;
-            node->prev = prev;
-            tail = node;
-        }
-
-        node_str_map[node->device_id] = node;
+  void add_node(SSS_Node<T> *node) {
+    if (head == nullptr) {
+      head = node;
+      tail = node;
+    } else {
+      auto prev = tail;
+      prev->next = node;
+      node->prev = prev;
+      tail = node;
     }
 
-    void remove_node(std::string id) {
-        // TODO:
-        // handle several different cases
-        // (removing head, removing tail, removing last remaining node)
+    node_str_map[node->device_id] = node;
+  }
 
-        if (head == node_str_map[id]
-            && tail == node_str_map[id]) {
-                auto node = node_str_map[id];
-                head = nullptr;
-                tail = nullptr;
-                delete node;
-                return;
-        }
+  void remove_node(std::string id) {
+    // TODO:
+    // handle several different cases
+    // (removing head, removing tail, removing last remaining node)
 
-        if (head == node_str_map[id]) {
-            auto n = head;
-            head = n->next;
-            delete n;
-            return;
-        }
-
-        if (tail == node_str_map[id]) {
-            auto node = node_str_map[id];
-            tail = node->prev;
-            tail->next = nullptr;
-            delete node;
-            return;
-        }
-
-        auto node = node_str_map[id];
-        auto prev_node = node->prev;
-        prev_node->next = node->next;
-        delete node;
+    if (head == node_str_map[id] && tail == node_str_map[id]) {
+      auto node = node_str_map[id];
+      head = nullptr;
+      tail = nullptr;
+      delete node;
+      return;
     }
 
-
-    void traverse_list() {
-        auto cur = head;
-        while (cur != nullptr) {
-            //std::cout << cur->device_id << std::endl;
-            cur = cur->next;
-        }
+    if (head == node_str_map[id]) {
+      auto node = head;
+      head = node->next;
+      delete node;
+      return;
     }
 
-    SSS_NodeList() { head = nullptr; tail = nullptr; }
+    if (tail == node_str_map[id]) {
+      auto node = node_str_map[id];
+      tail = node->prev;
+      tail->next = nullptr;
+      delete node;
+      return;
+    }
+
+    auto node = node_str_map[id];
+    auto prev_node = node->prev;
+    prev_node->next = node->next;
+    delete node;
+  }
+
+  void traverse_list_and_run() {
+    auto cur = head;
+    while (cur != nullptr) {
+      // if cur->fn != nullptr...
+      cur->run_fn();
+      cur = cur->next;
+    }
+  }
+
+  SSS_NodeList() {
+    head = nullptr;
+    tail = nullptr;
+  }
 };

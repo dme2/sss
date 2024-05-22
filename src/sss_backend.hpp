@@ -30,10 +30,11 @@ public:
   SSS_Mixer<T> *mixer;
 
   SSS_Backend(uint8_t channels, int sample_rate, int frame_count, SSS_FMT fmt,
-              std::size_t num_bytes)
+              std::size_t num_bytes, bool run_multithreaded = false,
+              int mt_out = 0, int mt_in = 0)
       : channels(channels), sample_rate(sample_rate), frame_count(frame_count),
         fmt(fmt) {
-    mixer = new SSS_Mixer<T>(num_bytes, true, 3, 1);
+    mixer = new SSS_Mixer<T>(num_bytes, run_multithreaded, mt_out, mt_in);
     fmt_bits = fmt_to_bits(fmt);
     fmt_bytes = fmt_to_bytes(fmt);
     num_bytes = num_bytes;
