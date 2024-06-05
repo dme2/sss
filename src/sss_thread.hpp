@@ -22,36 +22,48 @@ public:
 
   void thread_fn_inner() {
     for (;;) {
+
       // TODO:
       // progressive backoff here?
       sem.acquire();
-      for (auto &n : nodes_) {
-        n->run_fn();
+      for (size_t i = 0; i < num_nodes; i++) {
+        nodes_[i]->run_fn();
       }
 
-      // node_list_->traverse_list_and_run();
-
-      //
-      //  while (res <= 1) {
-      //   res = node_->run_fn();
-      //  }
+      // run_assigned_nodes();
     }
+  }
+
+  void run_assigned_nodes() {
+    for (size_t i = 0; i < num_nodes; i++)
+      this->node_ecs_->node_ecs[ecs_handles_[i]]->run_fn();
   }
 
   void wakeup() { sem.release(); }
 
   void set_node(SSS_Node<float> *node) { this->node_ = node; }
 
-  void push_node(SSS_Node<float> *node) { this->nodes_.push_back(node); }
+  void push_node(SSS_Node<float> *node) {
+    this->nodes_.push_back(node);
+    num_nodes += 1;
+  }
+
+  void push_node_ecs(int idx) { this->ecs_handles_.push_back(idx); }
 
 private:
   std::size_t idx_;
+
+  // indices into the ecs array
+  std::vector<size_t> ecs_handles_;
   // fn_type node_fn_;
   std::thread thread;
   std::counting_semaphore<1> sem{0};
   SSS_Node<float> *node_;
+
+  SSS_NodeECS<MAX_NODES> *node_ecs_;
   SSS_NodeList<float> *node_list_;
   std::vector<SSS_Node<float> *> nodes_;
+  std::size_t num_nodes{0};
 };
 
 /*
@@ -202,6 +214,21 @@ public:
     // in_threads_[cur_rr_in_index]->set_node(node);
     in_threads_[cur_rr_in_index]->push_node(node);
     cur_rr_in_index += 1;
+    if (cur_rr_in_index == n_in_threads)
+      cur_rr_in_index = 0;
+  }
+
+  // register's a node list to single thread
+  void register_output_node_list(SSS_NodeList<float> *node_list) {}
+
+  void register_out_thread_ecs(size_t idx) {
+    threads_[cur_rr_index]->push_node_ecs(idx);
+    if (cur_rr_index == n_out_threads)
+      cur_rr_index = 0;
+  }
+
+  void register_in_thread_ecs(size_t idx) {
+    threads_[cur_rr_in_index]->push_node_ecs(idx);
     if (cur_rr_in_index == n_in_threads)
       cur_rr_in_index = 0;
   }

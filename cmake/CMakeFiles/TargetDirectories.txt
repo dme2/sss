@@ -1,0 +1,5 @@
+/Users/daveevans/projects/sss/cmake/CMakeFiles/sss.dir
+/Users/daveevans/projects/sss/cmake/CMakeFiles/sss_sine.dir
+/Users/daveevans/projects/sss/cmake/CMakeFiles/sss_record.dir
+/Users/daveevans/projects/sss/cmake/CMakeFiles/edit_cache.dir
+/Users/daveevans/projects/sss/cmake/CMakeFiles/rebuild_cache.dir

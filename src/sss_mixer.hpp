@@ -102,6 +102,10 @@ public:
   SSS_NodeList<T> *input_node_list;
   SSS_NodeList<T> *output_node_list;
 
+  SSS_NodeECS<MAX_NODES> *node_ecs;
+  std::vector<int> out_node_ecs_idx;
+  std::vector<int> in_node_ecs_idx;
+
   // mixer function
   std::function<void(SSS_Mixer<T> *mixer, T *buff, std::size_t n_samples)>
       mixer_fn;
@@ -133,6 +137,23 @@ public:
     }
   }
 
+  void register_node_ecs(SSS_Node<T> *node) {
+    std::optional<int> res = node_ecs->add_node(node);
+    if (!res.has_value())
+      return;
+    if (run_multithreaded) {
+      if (node->nt == FILE_INPUT)
+        thread_pool->register_in_thread_ecs(res.value());
+      else
+        thread_pool->register_out_thread_ecs(res.value());
+    } else {
+      if (node->nt == FILE_INPUT)
+        this->in_node_ecs_idx.push_back(res.value());
+      else
+        this->out_node_ecs_idx.push_back(res.value());
+    }
+  }
+
   void new_node(NodeType nt, fn_type fn, int ch, void *fn_data,
                 std::string device_id = "", std::string file_path = "") {
     SSS_Node<T> *node = nullptr;
@@ -143,17 +164,11 @@ public:
     }
 
     node->fn_data = fn_data;
-
-    // TODO:
-    // clean up
-    // with the current stup, sequential nodes will need to be run in the same
-    // thread
+    node_ecs->add_node(node);
     if ((nt != FILE_OUT && nt != FILE_INPUT) && run_multithreaded) {
       if (node->next != nullptr) { // i.e. a sequential node
         auto cur_node = node;
         while (cur_node != nullptr) {
-          // thread_pool->push_node_list_fn_rr(cur_node->fun, cur_node,
-          //                                  cur_node->buff_size);
           auto cur_node = node->next;
         }
       } else {
