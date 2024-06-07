@@ -11,8 +11,9 @@ using fn_type = std::function<void()>;
 
 class SSS_Thread {
 public:
-  SSS_Thread(std::size_t idx, SSS_Node<float> *node = nullptr)
-      : idx_(idx), node_(node) {
+  SSS_Thread(std::size_t idx, SSS_NodeECS<MAX_NODES> *ecs,
+             SSS_Node<float> *node = nullptr)
+      : idx_(idx), node_(node), node_ecs_(ecs) {
     node_list_ = new SSS_NodeList<float>();
   }
 
@@ -26,17 +27,19 @@ public:
       // TODO:
       // progressive backoff here?
       sem.acquire();
-      for (size_t i = 0; i < num_nodes; i++) {
-        nodes_[i]->run_fn();
-      }
+      //      for (size_t i = 0; i < num_nodes; i++) {
+      //       nodes_[i]->run_fn();
+      //    }
 
-      // run_assigned_nodes();
+      run_assigned_nodes();
     }
   }
 
   void run_assigned_nodes() {
-    for (size_t i = 0; i < num_nodes; i++)
-      this->node_ecs_->node_ecs[ecs_handles_[i]]->run_fn();
+    for (size_t i = 0; i < num_nodes; i++) {
+      auto n = this->node_ecs_->node_ecs[ecs_handles_[i]];
+      n->run_fn();
+    }
   }
 
   void wakeup() { sem.release(); }
@@ -48,7 +51,12 @@ public:
     num_nodes += 1;
   }
 
-  void push_node_ecs(int idx) { this->ecs_handles_.push_back(idx); }
+  void push_node_ecs(int idx) {
+    this->ecs_handles_.push_back(idx);
+    num_nodes += 1;
+  }
+
+  SSS_NodeECS<MAX_NODES> *node_ecs_;
 
 private:
   std::size_t idx_;
@@ -60,7 +68,6 @@ private:
   std::counting_semaphore<1> sem{0};
   SSS_Node<float> *node_;
 
-  SSS_NodeECS<MAX_NODES> *node_ecs_;
   SSS_NodeList<float> *node_list_;
   std::vector<SSS_Node<float> *> nodes_;
   std::size_t num_nodes{0};
@@ -121,16 +128,19 @@ public:
   }
   */
 
-  SSS_ThreadPool(std::size_t n_out_threads, std::size_t n_in_threads)
+  SSS_ThreadPool(std::size_t n_out_threads, std::size_t n_in_threads,
+                 SSS_NodeECS<MAX_NODES> *ecs)
       : n_out_threads(n_out_threads) {
     for (int i = 0; i < n_out_threads; i++) {
-      auto new_thread = new SSS_Thread(i);
+      auto new_thread = new SSS_Thread(i, ecs);
+      // new_thread->node_ecs_ = this->node_ecs_;
       threads_.push_back(new_thread);
       new_thread->start_thread();
     }
 
     for (int i = 0; i < n_in_threads; i++) {
-      auto new_thread = new SSS_Thread(i);
+      auto new_thread = new SSS_Thread(i, ecs);
+      // new_thread->node_ecs_ = this->node_ecs_;
       in_threads_.push_back(new_thread);
       new_thread->start_thread();
     }
@@ -218,7 +228,7 @@ public:
       cur_rr_in_index = 0;
   }
 
-  // register's a node list to single thread
+  // registers a node list to single thread
   void register_output_node_list(SSS_NodeList<float> *node_list) {}
 
   void register_out_thread_ecs(size_t idx) {
@@ -232,6 +242,8 @@ public:
     if (cur_rr_in_index == n_in_threads)
       cur_rr_in_index = 0;
   }
+
+  SSS_NodeECS<MAX_NODES> *node_ecs_;
 
 private:
   std::deque<fn_type> tasks;

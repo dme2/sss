@@ -67,11 +67,14 @@ int main() {
 
   auto node1 = new SSS_Node<float>(OUTPUT, fn, 2, 1024, "A", fn_d1);
   auto node2 = new SSS_Node<float>(OUTPUT, fn, 2, 1024, "Csharp", fn_d2);
-  // auto node3 = new SSS_Node<float>(OUTPUT, fn, 2, 1024, "E", fn_d3);
+  auto node3 = new SSS_Node<float>(OUTPUT, fn, 2, 1024, "E", fn_d3);
 
-  sss_handle->register_mixer_node(node1);
-  sss_handle->register_mixer_node(node2);
+  // sss_handle->register_mixer_node(node1);
+  // sss_handle->register_mixer_node(node2);
   // sss_handle->register_mixer_node(node3);
+  sss_handle->register_mixer_node_ecs(node1);
+  sss_handle->register_mixer_node_ecs(node2);
+  sss_handle->register_mixer_node_ecs(node3);
 
   sss_handle->init_output_backend();
   sss_handle->start_output_backend();

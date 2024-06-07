@@ -51,6 +51,10 @@ public:
     this->sss_backend->mixer->register_node(node);
   }
 
+  void register_mixer_node_ecs(SSS_Node<T> *node) {
+    this->sss_backend->mixer->register_node_ecs(node);
+  }
+
   SSS(std::size_t frame_count, uint8_t channels, int32_t rate, SSS_FMT fmt,
       bool run_multithreaded = false, int mt_out = 0, int mt_in = 0)
       : channels(channels), rate(rate), frame_count(frame_count) {

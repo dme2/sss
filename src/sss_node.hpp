@@ -203,6 +203,8 @@ public:
 
   bool has_n_spaces(int n) { return cur_ptr + n < max_nodes; }
 
+  int num_avail_spaces() { return max_nodes - cur_ptr; }
+
   std::array<SSS_Node<float> *, ecs_size> node_ecs;
 
   size_t max_nodes{ecs_size};

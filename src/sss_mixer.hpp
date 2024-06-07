@@ -102,9 +102,10 @@ public:
   SSS_NodeList<T> *input_node_list;
   SSS_NodeList<T> *output_node_list;
 
-  SSS_NodeECS<MAX_NODES> *node_ecs;
+  SSS_NodeECS<MAX_NODES> node_ecs;
   std::vector<int> out_node_ecs_idx;
   std::vector<int> in_node_ecs_idx;
+  size_t num_idx;
 
   // mixer function
   std::function<void(SSS_Mixer<T> *mixer, T *buff, std::size_t n_samples)>
@@ -114,12 +115,15 @@ public:
             int mt_input = 0)
       : buff_size(buff_size), run_multithreaded(multithread) {
     mixer_buffer = new SSS_Buffer<T>(buff_size);
-    if (multithread) {
-      std::cout << "multithreaded!\n";
-      thread_pool = new SSS_ThreadPool(mt_output, mt_input);
-    }
     output_node_list = new SSS_NodeList<T>;
     input_node_list = new SSS_NodeList<T>;
+    node_ecs = SSS_NodeECS<MAX_NODES>();
+
+    if (multithread) {
+      std::cout << "multithreaded!\n";
+      thread_pool = new SSS_ThreadPool(mt_output, mt_input, &node_ecs);
+      thread_pool->node_ecs_ = &node_ecs;
+    }
   }
 
   void register_node(SSS_Node<T> *node) {
@@ -138,20 +142,24 @@ public:
   }
 
   void register_node_ecs(SSS_Node<T> *node) {
-    std::optional<int> res = node_ecs->add_node(node);
+    std::optional<int> res = node_ecs.add_node(node);
     if (!res.has_value())
       return;
     if (run_multithreaded) {
-      if (node->nt == FILE_INPUT)
+      if (node->nt == FILE_INPUT) {
         thread_pool->register_in_thread_ecs(res.value());
-      else
+        this->in_node_ecs_idx.push_back(res.value());
+      } else {
         thread_pool->register_out_thread_ecs(res.value());
+        this->out_node_ecs_idx.push_back(res.value());
+      }
     } else {
       if (node->nt == FILE_INPUT)
         this->in_node_ecs_idx.push_back(res.value());
       else
         this->out_node_ecs_idx.push_back(res.value());
     }
+    num_idx += 1;
   }
 
   void new_node(NodeType nt, fn_type fn, int ch, void *fn_data,
@@ -164,7 +172,7 @@ public:
     }
 
     node->fn_data = fn_data;
-    node_ecs->add_node(node);
+    node_ecs.add_node(node);
     if ((nt != FILE_OUT && nt != FILE_INPUT) && run_multithreaded) {
       if (node->next != nullptr) { // i.e. a sequential node
         auto cur_node = node;
@@ -202,7 +210,20 @@ public:
     }
   }
 
+  void sample_output_nodes_ecs() {
+    if (run_multithreaded) {
+      thread_pool->signal_threads();
+    } else {
+      for (size_t i = 0; i < num_idx; i++) {
+        auto node = node_ecs.node_ecs[out_node_ecs_idx[i]];
+        node->run_fn();
+      }
+    }
+  }
+
   // TODO:
+  // FIX!!
+  //
   //  refactor mixer buffer sampling
   //  lets say we have a node that depends on other nodes
   //  i.e. it's a tail node in a list of nodes, dependent
@@ -215,8 +236,11 @@ public:
     mixer_buffer->read_n(*buff, n_samples);
     scratch_buff = std::vector<T>(n_samples, 0);
 
-    auto n = output_node_list->head;
-    while (n != nullptr) {
+    for (size_t i = 0; i < num_idx; i++) {
+      auto n = node_ecs.node_ecs[out_node_ecs_idx[i]];
+
+      // auto n = output_node_list->head;
+      // while (n != nullptr) {
       auto cur_node_buff = new T[n_samples];
       if (n->nt == FILE_OUT) {
         // auto res_samples = n->node_buffer->read_n(cur_node_buff,
@@ -236,7 +260,7 @@ public:
         this->mixer_fn(this, cur_node_buff, n_samples);
       }
 
-      n = n->next;
+      // n = n->next;
     }
     /*
         for (auto n : output_nodes) {
