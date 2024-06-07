@@ -105,7 +105,8 @@ public:
   SSS_NodeECS<MAX_NODES> node_ecs;
   std::vector<int> out_node_ecs_idx;
   std::vector<int> in_node_ecs_idx;
-  size_t num_idx;
+  size_t num_out_idx;
+  size_t num_in_idx;
 
   // mixer function
   std::function<void(SSS_Mixer<T> *mixer, T *buff, std::size_t n_samples)>
@@ -147,19 +148,25 @@ public:
       return;
     if (run_multithreaded) {
       if (node->nt == FILE_INPUT) {
+        input_node_map[79] = node; // TODO
         thread_pool->register_in_thread_ecs(res.value());
         this->in_node_ecs_idx.push_back(res.value());
+        num_in_idx += 1;
       } else {
         thread_pool->register_out_thread_ecs(res.value());
         this->out_node_ecs_idx.push_back(res.value());
+        num_out_idx += 1;
       }
     } else {
-      if (node->nt == FILE_INPUT)
+      if (node->nt == FILE_INPUT) {
+        input_node_map[79] = node; // TODO
         this->in_node_ecs_idx.push_back(res.value());
-      else
+        num_in_idx += 1;
+      } else {
         this->out_node_ecs_idx.push_back(res.value());
+        num_out_idx += 1;
+      }
     }
-    num_idx += 1;
   }
 
   void new_node(NodeType nt, fn_type fn, int ch, void *fn_data,
@@ -214,7 +221,7 @@ public:
     if (run_multithreaded) {
       thread_pool->signal_threads();
     } else {
-      for (size_t i = 0; i < num_idx; i++) {
+      for (size_t i = 0; i < num_out_idx; i++) {
         auto node = node_ecs.node_ecs[out_node_ecs_idx[i]];
         node->run_fn();
       }
@@ -236,7 +243,7 @@ public:
     mixer_buffer->read_n(*buff, n_samples);
     scratch_buff = std::vector<T>(n_samples, 0);
 
-    for (size_t i = 0; i < num_idx; i++) {
+    for (size_t i = 0; i < num_out_idx; i++) {
       auto n = node_ecs.node_ecs[out_node_ecs_idx[i]];
 
       // auto n = output_node_list->head;
@@ -314,8 +321,9 @@ public:
       // }
       thread_pool->signal_in_threads();
     } else {
-      for (auto n : input_nodes) {
-        n->run_fn();
+      for (size_t i = 0; i < num_in_idx; i++) {
+        auto node = node_ecs.node_ecs[in_node_ecs_idx[i]];
+        node->run_fn();
       }
     }
   }
