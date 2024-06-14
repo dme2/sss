@@ -97,12 +97,17 @@ public:
   std::vector<SSS_Node<T> *> input_nodes;
   // device_id -> Node
   std::unordered_map<int, SSS_Node<T> *> input_node_map;
-  std::unordered_map<int, SSS_Node<T> *> output_node_map;
+
+  std::unordered_map<uint32_t, std::vector<int>> output_node_map;
+  std::unordered_map<uint32_t, int> output_node_idx_count;
 
   SSS_NodeList<T> *input_node_list;
   SSS_NodeList<T> *output_node_list;
 
   SSS_NodeECS<MAX_NODES> node_ecs;
+
+  // TODO: list of indices should be laid out as:
+  //  output_map["output_device"] = std::vector<int> indices
   std::vector<int> out_node_ecs_idx;
   std::vector<int> in_node_ecs_idx;
   size_t num_out_idx;
@@ -142,10 +147,10 @@ public:
     }
   }
 
-  void register_node_ecs(SSS_Node<T> *node) {
+  size_t register_node_ecs(SSS_Node<T> *node) {
     std::optional<int> res = node_ecs.add_node(node);
     if (!res.has_value())
-      return;
+      return -1;
     if (run_multithreaded) {
       if (node->nt == FILE_INPUT) {
         input_node_map[79] = node; // TODO
@@ -163,10 +168,16 @@ public:
         this->in_node_ecs_idx.push_back(res.value());
         num_in_idx += 1;
       } else {
-        this->out_node_ecs_idx.push_back(res.value());
-        num_out_idx += 1;
+        // this->out_node_ecs_idx.push_back(res.value());
+        this->output_node_map[node->device_id].push_back(res.value());
+        this->output_node_idx_count[node->device_id] += 1;
+        std::cout << "in  " << node->device_id << std::endl;
+        std::cout << "IDX: " << this->output_node_idx_count[node->device_id]
+                  << std::endl;
+        // num_out_idx += 1;
       }
     }
+    return res.value();
   }
 
   void new_node(NodeType nt, fn_type fn, int ch, void *fn_data,
@@ -197,33 +208,33 @@ public:
       output_nodes.push_back(node);
   }
 
+  void remove_node_ecs(size_t idx) {}
+
+  void pause_node_ecs(size_t idx) {
+    auto n = node_ecs.node_ecs[idx];
+    n->pause_node;
+  }
+
   void sample_output_nodes() {
     if (run_multithreaded) {
-      // if (!thread_pool->get_run_status()) {
-      //  thread_pool->start_threads();
-      //   return;
-      //}
       thread_pool->signal_threads();
     } else {
       // TODO:
       // sampling should take into account sequential nodes
       output_node_list->traverse_list_and_run();
-      // for (SSS_Node<T> *n : output_nodes) {
-      //  if (n->fun != nullptr) {
-      //   n->run_fn();
-      //  thread_pool->enqueue(n->fun, n, n->buff_size);
-      // }
-      // }
     }
   }
 
-  void sample_output_nodes_ecs() {
+  // TODO: pass device str
+  void sample_output_nodes_ecs(uint32_t device_id) {
     if (run_multithreaded) {
       thread_pool->signal_threads();
     } else {
-      for (size_t i = 0; i < num_out_idx; i++) {
-        auto node = node_ecs.node_ecs[out_node_ecs_idx[i]];
-        node->run_fn();
+      for (int i = 0; i < output_node_idx_count[device_id]; i++) {
+        // for (size_t i = 0; i < num_out_idx; i++) {
+        auto idx = output_node_map[device_id][i];
+        auto n = node_ecs.node_ecs[idx];
+        n->run_fn();
       }
     }
   }
@@ -235,23 +246,17 @@ public:
   //  lets say we have a node that depends on other nodes
   //  i.e. it's a tail node in a list of nodes, dependent
   //  on the previous nodes for it's data
-  //
-  //  should this node be the only node with data?
-  void sample_mixer_buffer_out(std::size_t n_samples, T **buff) {
-    // send some data first, then do the sampling is a
-    // better strategy maybe?
+  void sample_mixer_buffer_out(std::size_t n_samples, T **buff,
+                               uint32_t device_id) {
     mixer_buffer->read_n(*buff, n_samples);
     scratch_buff = std::vector<T>(n_samples, 0);
-
-    for (size_t i = 0; i < num_out_idx; i++) {
-      auto n = node_ecs.node_ecs[out_node_ecs_idx[i]];
-
-      // auto n = output_node_list->head;
-      // while (n != nullptr) {
+    for (int i = 0; i < output_node_idx_count[device_id]; i++) {
+      // for (size_t i = 0; i < num_out_idx; i++) {
+      auto idx = output_node_map[device_id][i];
+      auto n = node_ecs.node_ecs[idx];
       auto cur_node_buff = new T[n_samples];
+
       if (n->nt == FILE_OUT) {
-        // auto res_samples = n->node_buffer->read_n(cur_node_buff,
-        // n_samples);
         cur_node_buff = n->temp_buffer;
       } else {
         float res;
@@ -266,54 +271,10 @@ public:
       if (mixer_fn != nullptr) {
         this->mixer_fn(this, cur_node_buff, n_samples);
       }
-
-      // n = n->next;
     }
-    /*
-        for (auto n : output_nodes) {
-          // TODO:
-          // move this to a generic file function
-          // if (n->nt == FILE_OUT) {
-          // auto file_res = n->file->get_buffer(n_samples * out_channels);
-          // auto f32_res = convert_s16_to_f32(file_res, n_samples);
-          // if (mixer_fn != nullptr) {
-          // this->mixer_fn(this, f32_res, n_samples);
-          //}
-          //} else {
-          auto cur_node_buff = new T[n_samples];
-          if (n->nt == FILE_OUT) {
-            // auto res_samples = n->node_buffer->read_n(cur_node_buff,
-            // n_samples);
-            cur_node_buff = n->temp_buffer;
-          } else {
-            float res;
-            for (int i = 0; i < n_samples; i++) {
-              if (n->node_queue->dequeue(res))
-                cur_node_buff[i] = res;
-              else
-                std::cout << "err on dequeue!\n";
-            }
-          }
-          //  mix into scratch_buff
-          if (mixer_fn != nullptr) {
-            this->mixer_fn(this, cur_node_buff, n_samples);
-          }
-          //}
-          //  then write the scratch_buff to the mixer after
-          // mixer_buffer.write_n(scratch_buff.data(), n_samples);
-
-          // mixer_buffer.write_n(cur_node_buff, res_samples);
-        }
-        */
     mixer_buffer->write_n(scratch_buff.data(), n_samples);
-    // mixer_buffer.read_n(*buff, n_samples);
   }
 
-  // TODO:
-  // fixup input node sampling, currently it will write a chunk
-  // of silence before writing actual recorded audio
-  //
-  // also fix the thread pool
   void sample_mixer_buffer_in(std::size_t n_bytes, T **buff) {
     if (run_multithreaded) {
       // if (!thread_pool->get_run_status()) {

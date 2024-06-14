@@ -72,10 +72,11 @@ public:
   }
 
   OSStatus render(size_t n_frames, AudioBufferList *io_data,
-                  const AudioTimeStamp *output_time_stamp) {
+                  const AudioTimeStamp *output_time_stamp,
+                  AudioDeviceID device_id) {
     AudioBuffer &buff = io_data->mBuffers[0];
     T *audio_data = (T *)buff.mData;
-    sss_backend->get(n_frames, &audio_data);
+    sss_backend->get(n_frames, &audio_data, device_id);
     return noErr;
   }
 
@@ -93,14 +94,11 @@ public:
       return -1;
     }
     auto ca_data = (CoreAudioBackend *)user_data;
-    ca_data->sss_backend->mixer->sample_output_nodes_ecs();
+    ca_data->sss_backend->mixer->sample_output_nodes_ecs(inDevice);
     auto n_bytes = io_data->mBuffers[0].mDataByteSize;
     auto chans = io_data->mBuffers[0].mNumberChannels;
     auto n_frames = n_bytes / 8; // TODO!!
-    // std::cout << n_bytes << std::endl;
-    //  std::cout << "calling render " << n_frames << " " << n_bytes <<
-    //  std::endl;
-    ca_data->render(n_frames, io_data, output_time_stamp);
+    ca_data->render(n_frames, io_data, output_time_stamp, inDevice);
     return noErr;
   }
 
@@ -108,7 +106,10 @@ public:
   bool validate_node(SSS_Node<T> *node) { return true; }
 
   void list_devices() {
+    if (avail_devices.size() == 0)
+      get_avail_devices();
     std::cout << "Listing CoreAudio devices\n";
+    std::cout << avail_devices.size() << std::endl;
     for (const auto &dev : avail_devices) {
       CFStringRef device_name = NULL;
       UInt32 data_size = sizeof(device_name);
@@ -129,13 +130,48 @@ public:
     }
   }
 
-  bool ca_open(std::string out_id = "default") {
+  bool get_avail_devices() {
+    UInt32 data_size = 0;
+
+    avail_property_address.mSelector = kAudioHardwarePropertyDevices;
+    avail_property_address.mScope = kAudioObjectPropertyScopeGlobal;
+    avail_property_address.mElement = kAudioObjectPropertyElementMain;
+
+    // AudioObjectPropertyAddress property_address;
+    //  Get id's for rest of the devices
+    OSStatus status = AudioObjectGetPropertyDataSize(
+        kAudioObjectSystemObject, &avail_property_address, 0, 0, &data_size);
+
+    if (status != kAudioHardwareNoError) {
+      std::cerr << "Error getting audio devices data size." << std::endl;
+      return false;
+    }
+
+    UInt32 deviceCount = data_size / sizeof(AudioDeviceID);
+    std::cout << deviceCount << std::endl;
+
+    avail_devices = std::vector<AudioDeviceID>(deviceCount);
+
+    OSStatus avail_res = AudioObjectGetPropertyData(
+        kAudioObjectSystemObject, &avail_property_address, 0, 0, &data_size,
+        avail_devices.data());
+
+    if (avail_res != kAudioHardwareNoError) {
+      std::cerr << "Error getting audio devices." << std::endl;
+      return false;
+    }
+
+    return true;
+  }
+
+  bool ca_open_device(uint32_t out_id = 73) {
+    device_id = out_id;
     UInt32 size = sizeof(device_id);
     AudioObjectPropertyAddress propertyAddress = {
         kAudioHardwarePropertyDefaultOutputDevice,
         kAudioObjectPropertyScopeOutput, kAudioObjectPropertyElementMain};
 
-    if (out_id == "default") {
+    if (out_id == 1) {
       OSStatus res =
           AudioObjectGetPropertyData(kAudioObjectSystemObject, &propertyAddress,
                                      0, NULL, &size, &device_id);
@@ -145,10 +181,11 @@ public:
         return false;
       }
       std::cout << "default device opened\n";
-    } else {
-      device_id = atoi(out_id.c_str());
     }
 
+    OSStatus status;
+
+    /*
     // grab other available devices
     // TODO: probably move this elsewhere
     UInt32 data_size = 0;
@@ -156,6 +193,7 @@ public:
     avail_property_address.mSelector = kAudioHardwarePropertyDevices;
     avail_property_address.mScope = kAudioObjectPropertyScopeGlobal;
     avail_property_address.mElement = kAudioObjectPropertyElementMain;
+
     // AudioObjectPropertyAddress property_address;
     //  Get id's for rest of the devices
     OSStatus status = AudioObjectGetPropertyDataSize(
@@ -167,6 +205,7 @@ public:
     }
 
     UInt32 deviceCount = data_size / sizeof(AudioDeviceID);
+    std::cout << deviceCount << std::endl;
 
     avail_devices = std::vector<AudioDeviceID>(deviceCount);
 
@@ -178,6 +217,7 @@ public:
       std::cerr << "Error getting audio devices." << std::endl;
       return 1;
     }
+    */
 
     // set buffer size
     UInt32 numFrames = (UInt32)num_frames;
@@ -210,23 +250,6 @@ public:
     AudioStreamBasicDescription desiredFormat;
     desiredFormat.mFormatFlags = kAudioFormatFlagIsSignedInteger;
     desiredFormat.mSampleRate = (float)sample_rate;
-
-    // Set the property address for the device's stream format
-    //    AudioObjectPropertyAddress fmtAddress = {
-    //       kAudioDevicePropertyStreamFormat,
-    //      kAudioDevicePropertyScopeOutput, // or
-    // kAudioDevicePropertyScopeInput
-    //  };
-
-    // Apply the new format to the device
-    //    status = AudioObjectSetPropertyData(device_id, &fmtAddress, 0, NULL,
-    //                                       sizeof(AudioStreamBasicDescription),
-    //                                      &desiredFormat);
-
-    // if (status != noErr) {
-    //  fprintf(stderr, "Error setting audio format: %d\n", status);
-    // return 0;
-    //}
 
     AudioDeviceIOProcID ioProcID;
 

@@ -104,12 +104,6 @@ public:
     // std::cout << inInputData->mNumberBuffers << std::endl;
     auto n_bytes = inInputData->mBuffers[0].mDataByteSize;
     auto audio_data = (float *)inInputData->mBuffers[0].mData;
-    // std::cout << audio_data[100] << " ";
-    //     std::cout << n_bytes << std::endl;
-    //        std::cout << "calling render " << n_frames << " " << n_bytes <<
-    //        std::endl;
-    //       ca_data->render(n_frames, io_data, output_time_stamp);
-    //     std::cout << audio_data[100] << std::endl;
     auto n = ca_data->backend->mixer->input_node_map[79];
     n->temp_buffer = audio_data;
     ca_data->backend->handle_in(n_bytes, &audio_data);

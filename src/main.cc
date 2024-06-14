@@ -10,6 +10,9 @@
 // [x] improve file handling
 // [x] thread pool for node functions
 // [] set node channel data from deviceid for input and output
+//   -> [] fix callback so that we register one for each open device
+// [] get alsa working
+// cleanup unused code
 
 // this file is mostly just a placeholder for various tests and examples
 
@@ -131,16 +134,15 @@ int main() {
   fn_data *fn_d2 = new fn_data();
   fn_d2->pitch = 328.0;
 
-  auto node1 = new SSS_Node<float>(OUTPUT, fn, 2, 1024, "default", fn_d1);
-  auto node2 = new SSS_Node<float>(OUTPUT, fn, 2, 1024, "default2", fn_d2);
-  auto node3 =
-      new SSS_Node<float>(FILE_OUT, f_fn, 2, 1024, "default3", "output2.raw");
+  // auto node1 = new SSS_Node<float>(OUTPUT, fn, 2, 1024, "default", fn_d1);
+  // auto node2 = new SSS_Node<float>(OUTPUT, fn, 2, 1024, "default2", fn_d2);
+  auto node3 = new SSS_Node<float>(FILE_OUT, f_fn, 2, 1024, 73, "output2.raw");
   auto node4 =
-      new SSS_Node<float>(FILE_INPUT, i_fn, 2, 1024, "default4", "output_test");
+      new SSS_Node<float>(FILE_INPUT, i_fn, 2, 1024, 73, "output_test");
 
   // node1->next = node2;
-  sss_handle->register_mixer_node(node1);
-  sss_handle->register_mixer_node(node2);
+  // sss_handle->register_mixer_node(node1);
+  // sss_handle->register_mixer_node(node2);
   // sss_handle->register_mixer_node(node3);
   // sss_handle->register_mixer_node(node4);
   sss_handle->init_input_backend();

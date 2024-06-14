@@ -45,8 +45,8 @@ public:
       std::function<void(SSS_Mixer<T> *mixer, T *buff, std::size_t n_samples)>;
   void set_mixer_fn(mixer_fn mixer_fn) { mixer->mixer_fn = mixer_fn; }
 
-  void get(std::size_t n_frames, T **buff) {
-    mixer->sample_mixer_buffer_out(n_frames * channels, buff);
+  void get(std::size_t n_frames, T **buff, uint32_t device_id) {
+    mixer->sample_mixer_buffer_out(n_frames * channels, buff, device_id);
   }
 
   void handle_in(std::size_t n_bytes, T **buff) {

@@ -8,6 +8,7 @@
 #include "sss_alsa.hpp"
 #endif
 
+#include <set>
 // the aim of this file is to expose a good portion of the
 // simple sound system api
 // such as
@@ -30,6 +31,7 @@ public:
   uint8_t bits_per_sample;
   uint8_t bytes_per_frame;
   SSS_Backend<T> *sss_backend; // holds mixer handle
+  std::set<uint32_t> open_devices;
 
 #if SSS_HAVE_COREAUDIO
   CoreAudioBackend<T> *ca_backend;
@@ -52,6 +54,10 @@ public:
   }
 
   void register_mixer_node_ecs(SSS_Node<T> *node) {
+    if (open_devices.contains(node->device_id)) {
+      std::cout << "setting up new device\n";
+      ca_backend->ca_open_device(node->device_id);
+    }
     this->sss_backend->mixer->register_node_ecs(node);
   }
 
@@ -75,16 +81,24 @@ public:
   }
 
   void set_mixer_fn(mixer_fn m_fn) { sss_backend->set_mixer_fn(m_fn); }
+
   void init_output_backend() {
     // warmup our nodes
     // TODO: probably want a safer way to do this
     sss_backend->mixer->sample_output_nodes();
-    ca_backend->ca_open();
+    // start the default backend
+    ca_backend->ca_open_device();
+    open_devices.insert(73); // 73 = default coreaudio
   }
   void init_input_backend() { ca_input_backend->ca_open_input(); }
   void start_output_backend() { ca_backend->start(); }
   void start_input_backend() { ca_input_backend->start_input(); }
-  void pause_output_backend() { ca_backend->stop(); }
+
+  void pause_output_backend() {
+    ca_backend->stop();
+    // TODO: cleans up nullptr nodes in the ecs and removes
+    // ecs_gc();
+  }
   void pause_input_backend() { ca_input_backend->stop_input(); }
   void list_devices() { ca_backend->list_devices(); }
   // void pause_input_backend() { ca_input_backend->stop(); }

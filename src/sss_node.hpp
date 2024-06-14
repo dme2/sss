@@ -4,6 +4,7 @@
 #include "sss_util.hpp"
 
 #include <array>
+#include <cmath>
 #include <cstdlib>
 #include <cstring>
 #include <functional>
@@ -31,7 +32,8 @@ public:
   fn_type fun;
   NodeType nt;
   int channels;
-  std::string device_id;
+  uint32_t device_id;
+  std::string node_id;
   SSS_File *file;
   float *temp_buffer;
   std::function<void(SSS_Node<T>)> input_fn;
@@ -39,7 +41,7 @@ public:
   // by the mixer?
   // or should its output be sent to another node
   bool sample_output;
-  bool pause;
+  bool pause{false};
 
   size_t ecs_idx;
 
@@ -51,7 +53,7 @@ public:
 
   // TODO:
   // should probably figure out optimal buffer sizes here
-  SSS_Node(NodeType type, fn_type fn, int ch, std::size_t s, std::string id)
+  SSS_Node(NodeType type, fn_type fn, int ch, std::size_t s, uint32_t id)
       : nt(type), channels(ch), buff_size(s * 2), device_id(id) {
     this->fun = fn;
     node_buffer = new SSS_Buffer<T>(s * 4);
@@ -61,9 +63,10 @@ public:
       node_queue->enqueue(0);
   }
 
-  SSS_Node(NodeType type, fn_type fn, int ch, std::size_t s, std::string id,
-           void *fn_data)
-      : nt(type), channels(ch), buff_size(s), device_id(id), fn_data(fn_data) {
+  SSS_Node(NodeType type, fn_type fn, int ch, std::size_t s,
+           std::string node_id, uint32_t device_id, void *fn_data)
+      : nt(type), channels(ch), buff_size(s), node_id(node_id),
+        device_id(device_id), fn_data(fn_data) {
     this->fun = fn;
     node_buffer = new SSS_Buffer<T>(s * 4);
     node_queue = new SSS_Fifo<T>(s * 4);
@@ -72,7 +75,8 @@ public:
       node_queue->enqueue(0);
   }
 
-  SSS_Node(NodeType type, fn_type fn, int ch, std::size_t s, std::string id,
+  // TODO: fix id
+  SSS_Node(NodeType type, fn_type fn, int ch, std::size_t s, uint32_t id,
            std::string file_path)
       : nt(type), channels(ch), buff_size(s), device_id(id) {
     this->fun = fn;
@@ -88,6 +92,13 @@ public:
   SSS_Node(NodeType type, std::size_t s) : nt(type) {
     node_buffer = new SSS_Buffer<T>(s);
     node_queue = new SSS_Fifo<T>(s * 2);
+  }
+
+  void pause_node() {
+    if (pause)
+      return;
+    else
+      pause = true;
   }
 };
 
@@ -191,7 +202,13 @@ public:
     return cur_ptr++;
   }
 
-  void remove_node(SSS_Node<float> *node) { node_ecs[node->ecs_idx] = nullptr; }
+  void remove_node(SSS_Node<float> *node) {
+    node_ecs[node->ecs_idx]->pause_node();
+    // probably need to spinlock or something here
+    // don't want to set it to a nullptr while its
+    // in the middle of sampling
+    node_ecs[node->ecs_idx] = nullptr;
+  }
 
   // garbage collect dead nodes
   // move all the current nodes back into  a linear configuration

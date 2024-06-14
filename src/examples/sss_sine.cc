@@ -55,7 +55,7 @@ void mixer_fn(SSS_Mixer<float> *mixer, float *buff, std::size_t n_samples) {
 int main() {
   using fn_type = std::function<std::size_t(SSS_Node<float> *, std::size_t)>;
 
-  auto sss_handle = new SSS<float>(512, 2, 48000, SSS_FMT_S32, true, 3, 1);
+  auto sss_handle = new SSS<float>(512, 2, 48000, SSS_FMT_S32, false, 3, 1);
   sss_handle->set_mixer_fn(mixer_fn);
 
   fn_type fn = gen_sine1;
@@ -65,9 +65,9 @@ int main() {
   fn_d2->pitch = 277.183;
   fn_d3->pitch = 329.628;
 
-  auto node1 = new SSS_Node<float>(OUTPUT, fn, 2, 1024, "A", fn_d1);
-  auto node2 = new SSS_Node<float>(OUTPUT, fn, 2, 1024, "Csharp", fn_d2);
-  auto node3 = new SSS_Node<float>(OUTPUT, fn, 2, 1024, "E", fn_d3);
+  auto node1 = new SSS_Node<float>(OUTPUT, fn, 2, 1024, "A", 73, fn_d1);
+  auto node2 = new SSS_Node<float>(OUTPUT, fn, 2, 1024, "C#", 73, fn_d2);
+  auto node3 = new SSS_Node<float>(OUTPUT, fn, 2, 1024, "E", 73, fn_d3);
 
   // sss_handle->register_mixer_node(node1);
   // sss_handle->register_mixer_node(node2);
@@ -77,6 +77,7 @@ int main() {
   sss_handle->register_mixer_node_ecs(node3);
 
   sss_handle->init_output_backend();
+  sss_handle->list_devices();
   sss_handle->start_output_backend();
   std::this_thread::sleep_for(std::chrono::seconds(8));
   sss_handle->pause_output_backend();
