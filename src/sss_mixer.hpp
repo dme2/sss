@@ -91,6 +91,11 @@ public:
   std::size_t buff_size;
   SSS_Buffer<T> *mixer_buffer;
   std::vector<T> scratch_buff;
+
+  // a mixer and scratch buffer for each device (indexed by device)
+  std::unordered_map<uint32_t, SSS_Buffer<T> *> mixer_buffers;
+  std::vector<std::vector<T>> scratch_buffs;
+
   SSS_ThreadPool *thread_pool;
 
   std::vector<SSS_Node<T> *> output_nodes;
@@ -169,11 +174,11 @@ public:
         num_in_idx += 1;
       } else {
         // this->out_node_ecs_idx.push_back(res.value());
+        if (!mixer_buffers.contains(node->device_id)) {
+          mixer_buffers[node->device_id] = new SSS_Buffer<T>(this->buff_size);
+        }
         this->output_node_map[node->device_id].push_back(res.value());
         this->output_node_idx_count[node->device_id] += 1;
-        std::cout << "in  " << node->device_id << std::endl;
-        std::cout << "IDX: " << this->output_node_idx_count[node->device_id]
-                  << std::endl;
         // num_out_idx += 1;
       }
     }
@@ -215,20 +220,22 @@ public:
     n->pause_node;
   }
 
+  /*
   void sample_output_nodes() {
     if (run_multithreaded) {
-      thread_pool->signal_threads();
+      thread_pool->signal_threads(device_id);
     } else {
       // TODO:
       // sampling should take into account sequential nodes
       output_node_list->traverse_list_and_run();
     }
   }
+  */
 
   // TODO: pass device str
   void sample_output_nodes_ecs(uint32_t device_id) {
     if (run_multithreaded) {
-      thread_pool->signal_threads();
+      thread_pool->signal_threads(device_id);
     } else {
       for (int i = 0; i < output_node_idx_count[device_id]; i++) {
         // for (size_t i = 0; i < num_out_idx; i++) {
@@ -248,13 +255,15 @@ public:
   //  on the previous nodes for it's data
   void sample_mixer_buffer_out(std::size_t n_samples, T **buff,
                                uint32_t device_id) {
-    mixer_buffer->read_n(*buff, n_samples);
+    auto cur_mixer_buffer = mixer_buffers[device_id];
+    cur_mixer_buffer->read_n(*buff, n_samples);
     scratch_buff = std::vector<T>(n_samples, 0);
     for (int i = 0; i < output_node_idx_count[device_id]; i++) {
       // for (size_t i = 0; i < num_out_idx; i++) {
       auto idx = output_node_map[device_id][i];
       auto n = node_ecs.node_ecs[idx];
       auto cur_node_buff = new T[n_samples];
+      // std::cout << device_id << " " << i << std::endl;
 
       if (n->nt == FILE_OUT) {
         cur_node_buff = n->temp_buffer;
@@ -272,15 +281,16 @@ public:
         this->mixer_fn(this, cur_node_buff, n_samples);
       }
     }
-    mixer_buffer->write_n(scratch_buff.data(), n_samples);
+    cur_mixer_buffer->write_n(scratch_buff.data(), n_samples);
   }
 
-  void sample_mixer_buffer_in(std::size_t n_bytes, T **buff) {
+  void sample_mixer_buffer_in(std::size_t n_bytes, T **buff,
+                              uint32_t device_id) {
     if (run_multithreaded) {
       // if (!thread_pool->get_run_status()) {
       //  thread_pool->start_threads();
       // }
-      thread_pool->signal_in_threads();
+      thread_pool->signal_in_threads(device_id);
     } else {
       for (size_t i = 0; i < num_in_idx; i++) {
         auto node = node_ecs.node_ecs[in_node_ecs_idx[i]];

@@ -12,20 +12,6 @@
 // static const int INPUT_ELEMENT = 1;
 // static const int OUTPUT_ELEMENT = 0;
 
-// void set_ca_fmt_flags(AudioStreamBasicDescription &fmt, SSS_FMT sss_fmt) {
-//  if (is_float(sss_fmt)) {
-//   fmt.mFormatFlags = kLinearPCMFormatFlagIsFloat;
-// } else {
-//  fmt.mFormatFlags = kLinearPCMFormatFlagIsSignedInteger;
-//}
-//}
-
-// static AudioObjectPropertyAddress kDefaultOutputDeviceAddress = {
-//    kAudioHardwarePropertyDefaultOutputDevice,
-//    kAudioObjectPropertyScopeGlobal,
-//   kAudioObjectPropertyElementMain};
-
-// T = buffer_type
 template <typename T> class CoreAudioBackend {
 public:
   size_t num_frames;
@@ -63,12 +49,6 @@ public:
     format.mBytesPerPacket = bytes_per_frame; // 8
     format.mBytesPerFrame = bytes_per_frame;  // 8
     format.mReserved = 0;
-
-    // backend buffer size
-    //
-
-    // backend = new SSS_Backend<T>(2, 480000, 1024, SSS_FMT_S32, 4096);
-    //  fn_type fn = gen_sine1;
   }
 
   OSStatus render(size_t n_frames, AudioBufferList *io_data,
@@ -80,8 +60,6 @@ public:
     return noErr;
   }
 
-  // TODO:
-  // probably need to register a different IOProc for each device?
   static OSStatus IOProc(AudioDeviceID inDevice, const AudioTimeStamp *inNow,
                          const AudioBufferList *inInputData,
                          const AudioTimeStamp *inInputTime,
@@ -148,7 +126,6 @@ public:
     }
 
     UInt32 deviceCount = data_size / sizeof(AudioDeviceID);
-    std::cout << deviceCount << std::endl;
 
     avail_devices = std::vector<AudioDeviceID>(deviceCount);
 
@@ -184,40 +161,6 @@ public:
     }
 
     OSStatus status;
-
-    /*
-    // grab other available devices
-    // TODO: probably move this elsewhere
-    UInt32 data_size = 0;
-
-    avail_property_address.mSelector = kAudioHardwarePropertyDevices;
-    avail_property_address.mScope = kAudioObjectPropertyScopeGlobal;
-    avail_property_address.mElement = kAudioObjectPropertyElementMain;
-
-    // AudioObjectPropertyAddress property_address;
-    //  Get id's for rest of the devices
-    OSStatus status = AudioObjectGetPropertyDataSize(
-        kAudioObjectSystemObject, &avail_property_address, 0, 0, &data_size);
-
-    if (status != kAudioHardwareNoError) {
-      std::cerr << "Error getting audio devices data size." << std::endl;
-      return 1;
-    }
-
-    UInt32 deviceCount = data_size / sizeof(AudioDeviceID);
-    std::cout << deviceCount << std::endl;
-
-    avail_devices = std::vector<AudioDeviceID>(deviceCount);
-
-    OSStatus avail_res = AudioObjectGetPropertyData(
-        kAudioObjectSystemObject, &avail_property_address, 0, 0, &data_size,
-        avail_devices.data());
-
-    if (avail_res != kAudioHardwareNoError) {
-      std::cerr << "Error getting audio devices." << std::endl;
-      return 1;
-    }
-    */
 
     // set buffer size
     UInt32 numFrames = (UInt32)num_frames;
@@ -346,32 +289,7 @@ public:
                                device_latency_frames);
   }
 
-  double get_play_latency(const AudioTimeStamp *output_time_stamp) {
-    if ((output_time_stamp->mFlags & kAudioTimeStampHostTimeValid) == 0)
-      return 0;
-
-    UInt64 output_time_ns =
-        AudioConvertHostTimeToNanos(output_time_stamp->mHostTime);
-    UInt64 now_ns = AudioConvertHostTimeToNanos(AudioGetCurrentHostTime());
-
-    if (now_ns > output_time_ns)
-      return 0;
-
-    double delay_frames = static_cast<double>(1e-9 * (output_time_ns - now_ns) *
-                                              format.mSampleRate);
-
-    return (delay_frames + hardware_latency);
-  }
-
-  void start() {
-    //    if (!audio_unit) {
-    //     std::cout << "audio unit error\n";
-    //    return;
-    // }
-    // stopped = false;
-    // std::cout << "Starting CoreaAudio\n";
-    // AudioOutputUnitStart(audio_unit);
-
+  void start(uint32_t device_id = 73) {
     std::cout << "Starting CoreAudio output\n";
     OSStatus status = AudioDeviceStart(device_id, IOProc);
 

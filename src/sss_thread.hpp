@@ -6,6 +6,7 @@
 #include <mutex>
 #include <semaphore>
 #include <thread>
+#include <unordered_map>
 
 using fn_type = std::function<void()>;
 
@@ -27,15 +28,19 @@ public:
       // TODO:
       // progressive backoff here?
       sem.acquire();
-      //      for (size_t i = 0; i < num_nodes; i++) {
-      //       nodes_[i]->run_fn();
-      //    }
 
       run_assigned_nodes();
     }
   }
 
   void run_assigned_nodes() {
+    for (size_t i = 0; i < num_nodes; i++) {
+      auto n = this->node_ecs_->node_ecs[ecs_handles_[i]];
+      n->run_fn();
+    }
+  }
+
+  void run_assigned_nodes_dev() {
     for (size_t i = 0; i < num_nodes; i++) {
       auto n = this->node_ecs_->node_ecs[ecs_handles_[i]];
       n->run_fn();
@@ -58,11 +63,15 @@ public:
 
   SSS_NodeECS<MAX_NODES> *node_ecs_;
 
+  uint32_t cur_id{0};
+
 private:
   std::size_t idx_;
 
   // indices into the ecs array
   std::vector<size_t> ecs_handles_;
+  std::unordered_map<uint32_t, size_t> device_ecs_idx_;
+  uint32_t device_id{0};
   // fn_type node_fn_;
   std::thread thread;
   std::counting_semaphore<1> sem{0};
@@ -73,8 +82,7 @@ private:
   std::size_t num_nodes{0};
 };
 
-/*
-struct spinlock {
+class spinlock {
   std::atomic<bool> lock_ = {0};
 
   void lock() noexcept {
@@ -102,7 +110,6 @@ struct spinlock {
 
   void unlock() noexcept { lock_.store(false, std::memory_order_release); }
 };
-*/
 
 class SSS_ThreadPool {
 public:
@@ -195,14 +202,18 @@ public:
 
   void increment_rr_index() { cur_rr_index += 1; }
 
-  void signal_threads() {
-    for (std::size_t i = 0; i < threads_.size(); i++)
+  void signal_threads(uint32_t device_id) {
+    for (std::size_t i = 0; i < threads_.size(); i++) {
+      threads_[i]->cur_id = device_id;
       threads_[i]->wakeup();
+    }
   }
 
-  void signal_in_threads() {
-    for (std::size_t i = 0; i < in_threads_.size(); i++)
+  void signal_in_threads(uint32_t device_id) {
+    for (std::size_t i = 0; i < in_threads_.size(); i++) {
+      in_threads_[i]->cur_id = device_id;
       in_threads_[i]->wakeup();
+    }
   }
 
   // TODO:

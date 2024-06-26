@@ -49,7 +49,7 @@ public:
     mixer->sample_mixer_buffer_out(n_frames * channels, buff, device_id);
   }
 
-  void handle_in(std::size_t n_bytes, T **buff) {
-    mixer->sample_mixer_buffer_in(n_bytes, buff);
+  void handle_in(std::size_t n_bytes, T **buff, uint32_t device_id) {
+    mixer->sample_mixer_buffer_in(n_bytes, buff, device_id);
   }
 };

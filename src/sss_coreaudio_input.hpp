@@ -106,7 +106,7 @@ public:
     auto audio_data = (float *)inInputData->mBuffers[0].mData;
     auto n = ca_data->backend->mixer->input_node_map[79];
     n->temp_buffer = audio_data;
-    ca_data->backend->handle_in(n_bytes, &audio_data);
+    ca_data->backend->handle_in(n_bytes, &audio_data, inDevice);
 
     return noErr;
   }

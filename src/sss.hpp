@@ -54,9 +54,10 @@ public:
   }
 
   void register_mixer_node_ecs(SSS_Node<T> *node) {
-    if (open_devices.contains(node->device_id)) {
+    if (!open_devices.contains(node->device_id)) {
       std::cout << "setting up new device\n";
       ca_backend->ca_open_device(node->device_id);
+      open_devices.insert(node->device_id);
     }
     this->sss_backend->mixer->register_node_ecs(node);
   }
@@ -85,13 +86,16 @@ public:
   void init_output_backend() {
     // warmup our nodes
     // TODO: probably want a safer way to do this
-    sss_backend->mixer->sample_output_nodes();
+    // sss_backend->mixer->sample_output_nodes_ecs();
     // start the default backend
     ca_backend->ca_open_device();
     open_devices.insert(73); // 73 = default coreaudio
   }
   void init_input_backend() { ca_input_backend->ca_open_input(); }
-  void start_output_backend() { ca_backend->start(); }
+  void start_output_backend() {
+    for (auto i : open_devices)
+      ca_backend->start(i);
+  }
   void start_input_backend() { ca_input_backend->start_input(); }
 
   void pause_output_backend() {

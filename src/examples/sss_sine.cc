@@ -67,7 +67,7 @@ int main() {
 
   auto node1 = new SSS_Node<float>(OUTPUT, fn, 2, 1024, "A", 73, fn_d1);
   auto node2 = new SSS_Node<float>(OUTPUT, fn, 2, 1024, "C#", 73, fn_d2);
-  auto node3 = new SSS_Node<float>(OUTPUT, fn, 2, 1024, "E", 73, fn_d3);
+  auto node3 = new SSS_Node<float>(OUTPUT, fn, 2, 1024, "E", 85, fn_d3);
 
   // sss_handle->register_mixer_node(node1);
   // sss_handle->register_mixer_node(node2);

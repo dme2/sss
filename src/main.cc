@@ -10,9 +10,17 @@
 // [x] improve file handling
 // [x] thread pool for node functions
 // [] set node channel data from deviceid for input and output
-//   -> [] fix callback so that we register one for each open device
+//   -> [x] fix callback so that we register one for each open device
+// [] fix multithread node logic
 // [] get alsa working
-// cleanup unused code
+// [] cleanup unused code
+
+// [] maybe change mixer data structures/logic. i.e. fix the node
+//    indexing mess
+//
+// [] add_device(int device_id)
+//   -> [] make_aggregate(int device_id)
+//
 
 // this file is mostly just a placeholder for various tests and examples
 
