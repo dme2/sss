@@ -1,4 +1,5 @@
 #include "config.h"
+#include <unordered_map>
 
 #if SSS_HAVE_COREAUDIO
 #include "sss_coreaudio.hpp"
@@ -59,7 +60,8 @@ public:
       ca_backend->ca_open_device(node->device_id);
       open_devices.insert(node->device_id);
     }
-    this->sss_backend->mixer->register_node_ecs(node);
+    auto ecs_idx = this->sss_backend->mixer->register_node_ecs(node);
+    sss_backend->device_node_map[node->device_id].push_back(ecs_idx);
   }
 
   SSS(std::size_t frame_count, uint8_t channels, int32_t rate, SSS_FMT fmt,

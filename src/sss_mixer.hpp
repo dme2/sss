@@ -118,6 +118,8 @@ public:
   size_t num_out_idx;
   size_t num_in_idx;
 
+  SSS_Msg_Queue *msg_queue;
+
   // mixer function
   std::function<void(SSS_Mixer<T> *mixer, T *buff, std::size_t n_samples)>
       mixer_fn;
@@ -129,10 +131,12 @@ public:
     output_node_list = new SSS_NodeList<T>;
     input_node_list = new SSS_NodeList<T>;
     node_ecs = SSS_NodeECS<MAX_NODES>();
+    msg_queue = new SSS_Msg_Queue();
 
     if (multithread) {
       std::cout << "multithreaded!\n";
-      thread_pool = new SSS_ThreadPool(mt_output, mt_input, &node_ecs);
+      thread_pool =
+          new SSS_ThreadPool(mt_output, mt_input, &node_ecs, msg_queue);
       thread_pool->node_ecs_ = &node_ecs;
     }
   }
@@ -165,6 +169,11 @@ public:
       } else {
         thread_pool->register_out_thread_ecs(res.value());
         this->out_node_ecs_idx.push_back(res.value());
+        if (!mixer_buffers.contains(node->device_id)) {
+          mixer_buffers[node->device_id] = new SSS_Buffer<T>(this->buff_size);
+        }
+        this->output_node_map[node->device_id].push_back(res.value());
+        this->output_node_idx_count[node->device_id] += 1;
         num_out_idx += 1;
       }
     } else {
@@ -262,23 +271,29 @@ public:
       // for (size_t i = 0; i < num_out_idx; i++) {
       auto idx = output_node_map[device_id][i];
       auto n = node_ecs.node_ecs[idx];
-      auto cur_node_buff = new T[n_samples];
-      // std::cout << device_id << " " << i << std::endl;
-
+      std::vector<T> cur_node_buff;
+      if (!n->node_buffer_fifo->dequeue(cur_node_buff)) {
+        std::cout << "err on getting buffer sending silence\n";
+        cur_node_buff = std::vector<T>(n_samples, 0);
+      }
+      // auto out_buff = new T[n_samples];
+      // std::cout << cur_node_buff.size() << " " << n_samples << std::endl;
       if (n->nt == FILE_OUT) {
-        cur_node_buff = n->temp_buffer;
+        // cur_node_buff = n->temp_buffer;
       } else {
-        float res;
-        for (int i = 0; i < n_samples; i++) {
-          if (n->node_queue->dequeue(res))
-            cur_node_buff[i] = res;
-          else
-            std::cout << "err on dequeue!\n";
-        }
+        // float res;
+        // for (int i = 0; i < n_samples; i++) {
+        // out_buff[i] = cur_node_buff[i];
+        //   if (n->node_queue->dequeue(res))
+        //    cur_node_buff[i] = res;
+        //   else
+        //    std::cout << "err on dequeue!\n";
+        // }
+        //}
       }
       //  mix into scratch_buff
       if (mixer_fn != nullptr) {
-        this->mixer_fn(this, cur_node_buff, n_samples);
+        this->mixer_fn(this, cur_node_buff.data(), n_samples);
       }
     }
     cur_mixer_buffer->write_n(scratch_buff.data(), n_samples);
@@ -293,6 +308,8 @@ public:
       thread_pool->signal_in_threads(device_id);
     } else {
       for (size_t i = 0; i < num_in_idx; i++) {
+        // TODO
+        // only handle nodes that are associated with the device_id
         auto node = node_ecs.node_ecs[in_node_ecs_idx[i]];
         node->run_fn();
       }

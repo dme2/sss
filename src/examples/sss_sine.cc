@@ -19,14 +19,20 @@ std::size_t gen_sine1(SSS_Node<float> *node, std::size_t num_samples) {
   double float_sample_rate = 48000.0; // TODO
   double seconds_per_frame = 1.0 / float_sample_rate;
   double phaseStep = (2.0 * M_PI * sine_data->pitch) / float_sample_rate;
-  std::size_t frame_count = fmax(num_samples, node->node_queue->get_capacity());
+  // std::size_t frame_count = fmax(num_samples,
+  // node->node_queue->get_capacity());
+  size_t frame_count = num_samples;
+  // std::cout << num_samples << std::endl;
+  std::vector<float> samples(num_samples);
   bool enq;
   for (int frame = 0; frame < frame_count / chans; frame++) {
     auto sample = sin(sine_data->phase) * sine_data->volume;
     for (int i = 0; i < chans; i++) {
-      enq = node->node_queue->enqueue(sample);
-      if (!enq)
-        return frame_count;
+      samples[(frame * chans) + i] = sample;
+      // enq = node->node_queue->enqueue(sample);
+      // if (!enq) {
+      //  return frame_count;
+      // }
     }
 
     sine_data->phase += phaseStep;
@@ -35,6 +41,9 @@ std::size_t gen_sine1(SSS_Node<float> *node, std::size_t num_samples) {
   while (sine_data->phase >= 2.0 * M_PI) {
     sine_data->phase -= 2.0 * M_PI;
   }
+
+  if (!node->node_buffer_fifo->enqueue(samples))
+    std::cout << "no space!\n";
 
   return frame_count;
 }
@@ -55,7 +64,7 @@ void mixer_fn(SSS_Mixer<float> *mixer, float *buff, std::size_t n_samples) {
 int main() {
   using fn_type = std::function<std::size_t(SSS_Node<float> *, std::size_t)>;
 
-  auto sss_handle = new SSS<float>(512, 2, 48000, SSS_FMT_S32, false, 3, 1);
+  auto sss_handle = new SSS<float>(512, 2, 48000, SSS_FMT_S32, true, 3, 1);
   sss_handle->set_mixer_fn(mixer_fn);
 
   fn_type fn = gen_sine1;
@@ -67,14 +76,14 @@ int main() {
 
   auto node1 = new SSS_Node<float>(OUTPUT, fn, 2, 1024, "A", 73, fn_d1);
   auto node2 = new SSS_Node<float>(OUTPUT, fn, 2, 1024, "C#", 73, fn_d2);
-  auto node3 = new SSS_Node<float>(OUTPUT, fn, 2, 1024, "E", 85, fn_d3);
+  // auto node3 = new SSS_Node<float>(OUTPUT, fn, 2, 1024, "E", 85, fn_d3);
 
   // sss_handle->register_mixer_node(node1);
   // sss_handle->register_mixer_node(node2);
   // sss_handle->register_mixer_node(node3);
   sss_handle->register_mixer_node_ecs(node1);
   sss_handle->register_mixer_node_ecs(node2);
-  sss_handle->register_mixer_node_ecs(node3);
+  // sss_handle->register_mixer_node_ecs(node3);
 
   sss_handle->init_output_backend();
   sss_handle->list_devices();

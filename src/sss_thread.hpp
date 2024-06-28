@@ -1,4 +1,5 @@
-#include "sss_node.hpp"
+// #include "sss_node.hpp"
+#include "sss_msg_queue.hpp" // includes sss_node
 #include <condition_variable>
 #include <deque>
 #include <functional>
@@ -13,10 +14,12 @@ using fn_type = std::function<void()>;
 class SSS_Thread {
 public:
   SSS_Thread(std::size_t idx, SSS_NodeECS<MAX_NODES> *ecs,
-             SSS_Node<float> *node = nullptr)
-      : idx_(idx), node_(node), node_ecs_(ecs) {
+             SSS_Msg_Queue *msg_queue, SSS_Node<float> *node = nullptr)
+      : idx_(idx), node_(node), node_ecs_(ecs), msg_queue_(msg_queue) {
     node_list_ = new SSS_NodeList<float>();
   }
+
+  int backoff{0};
 
   void start_thread() {
     thread = std::thread([this] { this->thread_fn_inner(); });
@@ -25,12 +28,29 @@ public:
   void thread_fn_inner() {
     for (;;) {
 
-      // TODO:
-      // progressive backoff here?
-      sem.acquire();
+      backoff = 0;
 
-      run_assigned_nodes();
+      while (backoff < 256) {
+        if (pop_and_run_node()) {
+          backoff = 0;
+          // std::cout << "deque!\n";
+        } else {
+          backoff++;
+        }
+      }
+
+      sem.acquire();
     }
+  }
+
+  bool pop_and_run_node() {
+    auto msg = msg_queue_->pop_msg();
+    if (msg.has_value()) {
+      auto node = node_ecs_->node_ecs[msg->node_idx];
+      node->run_fn();
+      return true;
+    } else
+      return false;
   }
 
   void run_assigned_nodes() {
@@ -62,6 +82,7 @@ public:
   }
 
   SSS_NodeECS<MAX_NODES> *node_ecs_;
+  SSS_Msg_Queue *msg_queue_;
 
   uint32_t cur_id{0};
 
@@ -70,7 +91,7 @@ private:
 
   // indices into the ecs array
   std::vector<size_t> ecs_handles_;
-  std::unordered_map<uint32_t, size_t> device_ecs_idx_;
+  std::unordered_map<uint32_t, size_t> device_ecs_handles_;
   uint32_t device_id{0};
   // fn_type node_fn_;
   std::thread thread;
@@ -136,17 +157,18 @@ public:
   */
 
   SSS_ThreadPool(std::size_t n_out_threads, std::size_t n_in_threads,
-                 SSS_NodeECS<MAX_NODES> *ecs)
+                 SSS_NodeECS<MAX_NODES> *ecs, SSS_Msg_Queue *msg_queue)
       : n_out_threads(n_out_threads) {
+
     for (int i = 0; i < n_out_threads; i++) {
-      auto new_thread = new SSS_Thread(i, ecs);
+      auto new_thread = new SSS_Thread(i, ecs, msg_queue);
       // new_thread->node_ecs_ = this->node_ecs_;
       threads_.push_back(new_thread);
       new_thread->start_thread();
     }
 
     for (int i = 0; i < n_in_threads; i++) {
-      auto new_thread = new SSS_Thread(i, ecs);
+      auto new_thread = new SSS_Thread(i, ecs, msg_queue);
       // new_thread->node_ecs_ = this->node_ecs_;
       in_threads_.push_back(new_thread);
       new_thread->start_thread();
@@ -204,7 +226,7 @@ public:
 
   void signal_threads(uint32_t device_id) {
     for (std::size_t i = 0; i < threads_.size(); i++) {
-      threads_[i]->cur_id = device_id;
+      // threads_[i]->cur_id = device_id;
       threads_[i]->wakeup();
     }
   }
