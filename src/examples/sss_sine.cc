@@ -16,14 +16,13 @@ struct fn_data {
 std::size_t gen_sine1(SSS_Node<float> *node, std::size_t num_samples) {
   auto sine_data = (fn_data *)node->fn_data;
   auto chans = node->channels;
+  // std::cout << num_samples << std::endl;
   double float_sample_rate = 48000.0; // TODO
   double seconds_per_frame = 1.0 / float_sample_rate;
   double phaseStep = (2.0 * M_PI * sine_data->pitch) / float_sample_rate;
-  // std::size_t frame_count = fmax(num_samples,
-  // node->node_queue->get_capacity());
   size_t frame_count = num_samples;
-  // std::cout << num_samples << std::endl;
-  std::vector<float> samples(num_samples);
+  std::vector<float> samples(num_samples, 0);
+
   bool enq;
   for (int frame = 0; frame < frame_count / chans; frame++) {
     auto sample = sin(sine_data->phase) * sine_data->volume;
@@ -34,7 +33,6 @@ std::size_t gen_sine1(SSS_Node<float> *node, std::size_t num_samples) {
       //  return frame_count;
       // }
     }
-
     sine_data->phase += phaseStep;
   }
 
@@ -48,7 +46,8 @@ std::size_t gen_sine1(SSS_Node<float> *node, std::size_t num_samples) {
   return frame_count;
 }
 
-void mixer_fn(SSS_Mixer<float> *mixer, float *buff, std::size_t n_samples) {
+void mixer_fn(SSS_Mixer<float> *mixer, std::vector<float> *buff,
+              std::size_t n_samples) {
   auto clamp = [](float a, float b) {
     if (a == 0)
       return b;
@@ -56,7 +55,7 @@ void mixer_fn(SSS_Mixer<float> *mixer, float *buff, std::size_t n_samples) {
   };
 
   std::transform(mixer->scratch_buff.begin(),
-                 mixer->scratch_buff.begin() + n_samples, buff,
+                 mixer->scratch_buff.begin() + n_samples, buff->begin(),
                  mixer->scratch_buff.begin(), clamp);
   return;
 }
@@ -83,8 +82,13 @@ int main() {
   // sss_handle->register_mixer_node(node3);
   sss_handle->register_mixer_node_ecs(node1);
   sss_handle->register_mixer_node_ecs(node2);
-  // sss_handle->register_mixer_node_ecs(node3);
+  //  sss_handle->register_mixer_node_ecs(node3);
 
+  // warmup the nodes
+  for (int i = 0; i < 10; i++) {
+    node1->run_fn();
+    node2->run_fn();
+  }
   sss_handle->init_output_backend();
   sss_handle->list_devices();
   sss_handle->start_output_backend();

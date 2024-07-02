@@ -1,4 +1,5 @@
 #include "sss_node.hpp"
+#include <mutex>
 #include <optional>
 
 enum Action { SAMPLE_NODE, HANDLE_INPUT, PAUSE, CHANGE_VOLUME };
@@ -18,6 +19,7 @@ struct SSS_Msg {
 class SSS_Msg_Queue {
 public:
   SSS_Fifo<SSS_Msg> *msg_queue;
+  std::mutex queue_mutex;
 
   void push_msg(size_t node_idx, uint32_t device_id, Action action,
                 float volume) {
@@ -27,9 +29,15 @@ public:
 
   std::optional<SSS_Msg> pop_msg() {
     SSS_Msg res;
-    if (msg_queue->dequeue(res))
-      return res;
-    else
+    if (queue_mutex.try_lock()) {
+      if (msg_queue->dequeue(res)) {
+        queue_mutex.unlock();
+        return res;
+      } else {
+        queue_mutex.unlock();
+        return {};
+      }
+    } else
       return {};
   }
 

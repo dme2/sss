@@ -108,7 +108,8 @@ std::size_t gen_sine2(int32_t *buff, std::size_t num_frames) {
 }
 */
 
-void mixer_fn(SSS_Mixer<float> *mixer, float *buff, std::size_t n_samples) {
+void mixer_fn(SSS_Mixer<float> *mixer, std::vector<float> *buff,
+              std::size_t n_samples) {
   auto clamp = [](float a, float b) {
     if (a == 0)
       return b;
@@ -116,7 +117,7 @@ void mixer_fn(SSS_Mixer<float> *mixer, float *buff, std::size_t n_samples) {
   };
 
   std::transform(mixer->scratch_buff.begin(),
-                 mixer->scratch_buff.begin() + n_samples, buff,
+                 mixer->scratch_buff.begin() + n_samples, buff->begin(),
                  mixer->scratch_buff.begin(), clamp);
   return;
 }

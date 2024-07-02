@@ -23,8 +23,8 @@
 template <typename T> class SSS {
 public:
   using fn_type = std::function<std::size_t(SSS_Node<T> *, std::size_t)>;
-  using mixer_fn =
-      std::function<void(SSS_Mixer<T> *mixer, T *buff, std::size_t n_samples)>;
+  using mixer_fn = std::function<void(SSS_Mixer<T> *mixer, std::vector<T> *buff,
+                                      std::size_t n_samples)>;
   std::size_t frame_count;
   uint8_t channels;
   int32_t rate;

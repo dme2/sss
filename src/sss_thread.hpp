@@ -30,16 +30,10 @@ public:
 
       backoff = 0;
 
-      while (backoff < 256) {
-        if (pop_and_run_node()) {
-          backoff = 0;
-          // std::cout << "deque!\n";
-        } else {
-          backoff++;
-        }
-      }
-
       sem.acquire();
+      while (pop_and_run_node()) {
+        backoff++;
+      }
     }
   }
 

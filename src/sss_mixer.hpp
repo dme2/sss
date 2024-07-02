@@ -121,7 +121,8 @@ public:
   SSS_Msg_Queue *msg_queue;
 
   // mixer function
-  std::function<void(SSS_Mixer<T> *mixer, T *buff, std::size_t n_samples)>
+  std::function<void(SSS_Mixer<T> *mixer, std::vector<T> *buff,
+                     std::size_t n_samples)>
       mixer_fn;
 
   SSS_Mixer(std::size_t buff_size, bool multithread = false, int mt_output = 0,
@@ -241,17 +242,32 @@ public:
   }
   */
 
+  bool pop_and_run_node() {
+    auto msg = msg_queue->pop_msg();
+    if (msg.has_value()) {
+      auto node = node_ecs.node_ecs[msg->node_idx];
+      node->run_fn();
+      return true;
+    } else
+      return false;
+  }
+
   // TODO: pass device str
   void sample_output_nodes_ecs(uint32_t device_id) {
     if (run_multithreaded) {
       thread_pool->signal_threads(device_id);
     } else {
+      do {
+        // ...
+      } while (pop_and_run_node());
+      /*
       for (int i = 0; i < output_node_idx_count[device_id]; i++) {
         // for (size_t i = 0; i < num_out_idx; i++) {
         auto idx = output_node_map[device_id][i];
         auto n = node_ecs.node_ecs[idx];
         n->run_fn();
       }
+    } */
     }
   }
 
@@ -276,24 +292,27 @@ public:
         std::cout << "err on getting buffer sending silence\n";
         cur_node_buff = std::vector<T>(n_samples, 0);
       }
+
+      if (scratch_buff.size() != cur_node_buff.size())
+        std::cout << "mismatch!\n";
       // auto out_buff = new T[n_samples];
       // std::cout << cur_node_buff.size() << " " << n_samples << std::endl;
-      if (n->nt == FILE_OUT) {
-        // cur_node_buff = n->temp_buffer;
-      } else {
-        // float res;
-        // for (int i = 0; i < n_samples; i++) {
-        // out_buff[i] = cur_node_buff[i];
-        //   if (n->node_queue->dequeue(res))
-        //    cur_node_buff[i] = res;
-        //   else
-        //    std::cout << "err on dequeue!\n";
-        // }
-        //}
-      }
+      // if (n->nt == FILE_OUT) {
+      // cur_node_buff = n->temp_buffer;
+      // } else {
+      // float res;
+      // for (int i = 0; i < n_samples; i++) {
+      // out_buff[i] = cur_node_buff[i];
+      //   if (n->node_queue->dequeue(res))
+      //    cur_node_buff[i] = res;
+      //   else
+      //    std::cout << "err on dequeue!\n";
+      // }
+      //}
+      //}
       //  mix into scratch_buff
       if (mixer_fn != nullptr) {
-        this->mixer_fn(this, cur_node_buff.data(), n_samples);
+        this->mixer_fn(this, &cur_node_buff, n_samples);
       }
     }
     cur_mixer_buffer->write_n(scratch_buff.data(), n_samples);

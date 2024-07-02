@@ -15,17 +15,17 @@ public:
     cur_capacity = queue_size;
   }
 
-  bool is_full(){
-      auto cur_head = head.load(std::memory_order_relaxed);
-      auto cur_tail = head.load(std::memory_order_relaxed);
-      if (cur_head == cur_tail && (!(cur_head == 0 && cur_tail == 0)))
-        return true;
-      else
-        return false;
+  bool is_full() {
+    auto cur_head = head.load(std::memory_order_relaxed);
+    auto cur_tail = tail.load(std::memory_order_relaxed);
+    if (cur_head == cur_tail && (!(cur_head == 0 && cur_tail == 0)))
+      return true;
+    else
+      return false;
   }
 
   std::size_t get_capacity() {
-      return cur_capacity.load(std::memory_order_relaxed);
+    return cur_capacity.load(std::memory_order_relaxed);
   }
 
   bool enqueue(T x) {
@@ -34,7 +34,7 @@ public:
     if (new_tail_idx == size)
       new_tail_idx = 0;
     if (new_tail_idx == head.load(std::memory_order_acquire))
-        return false;
+      return false;
     data[cur_tail] = x;
     tail.store(new_tail_idx, std::memory_order_release);
     auto cur_cap = cur_capacity.load(std::memory_order_relaxed) - 1;

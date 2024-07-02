@@ -42,8 +42,8 @@ public:
 
     // start_mixer<T, S>(mixer);
   }
-  using mixer_fn =
-      std::function<void(SSS_Mixer<T> *mixer, T *buff, std::size_t n_samples)>;
+  using mixer_fn = std::function<void(SSS_Mixer<T> *mixer, std::vector<T> *buff,
+                                      std::size_t n_samples)>;
   void set_mixer_fn(mixer_fn mixer_fn) { mixer->mixer_fn = mixer_fn; }
 
   // TODO: rename?

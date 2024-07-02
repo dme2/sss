@@ -72,8 +72,8 @@ public:
       return -1;
     }
     auto ca_data = (CoreAudioBackend *)user_data;
-    ca_data->sss_backend->mixer->sample_output_nodes_ecs(inDevice);
     ca_data->sss_backend->stage_out_nodes(inDevice);
+    ca_data->sss_backend->mixer->sample_output_nodes_ecs(inDevice);
     auto n_bytes = io_data->mBuffers[0].mDataByteSize;
     auto chans = io_data->mBuffers[0].mNumberChannels;
     auto n_frames = n_bytes / 8; // TODO!!
