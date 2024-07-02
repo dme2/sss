@@ -81,31 +81,68 @@ public:
         rate, bits_per_sample, channels, bytes_per_frame, frame_count, fmt);
     ca_input_backend->backend = sss_backend;
 #endif
+
+#if SSS_HAVE_ALSA
+    alsa_backend =
+        new AlsaBackend(sample_rate, channels, bytes_per_frame, frame_count);
+    alsa_backend->sss_backend = sss_backend;
+
+    alsa_input_backend = new AlsaInputBackend(sample_rate, channels,
+                                              bytes_per_frame, frame_count);
+    alsa_input_backend->sss_backend = sss_backend;
+#endif
   }
 
   void set_mixer_fn(mixer_fn m_fn) { sss_backend->set_mixer_fn(m_fn); }
 
   void init_output_backend() {
-    // warmup our nodes
-    // TODO: probably want a safer way to do this
-    // sss_backend->mixer->sample_output_nodes_ecs();
-    // start the default backend
+#if SSS_HAVE_COREAUDIO
     ca_backend->ca_open_device();
     open_devices.insert(73); // 73 = default coreaudio
+#endif
+#if SSS_HAVE_ALSA
+    alsa_backend->init_alsa_out();
+#endif
   }
-  void init_input_backend() { ca_input_backend->ca_open_input(); }
+
+  void init_input_backend() {
+#if SSS_HAVE_COREAUDIO
+    ca_input_backend->ca_open_input();
+#endif
+#if SSS_HAVE_ALSA
+    alsa_input_backend->init_alsa_input();
+#endif
+  }
   void start_output_backend() {
+
+#if SSS_HAVE_COREAUDIO
     for (auto i : open_devices)
       ca_backend->start(i);
+#endif
   }
-  void start_input_backend() { ca_input_backend->start_input(); }
+  void start_input_backend() {
+#if SSS_HAVE_COREAUDIO
+    ca_input_backend->start_input();
+#endif
+  }
 
   void pause_output_backend() {
+#if SSS_HAVE_COREAUDIO
     ca_backend->stop();
     // TODO: cleans up nullptr nodes in the ecs and removes
     // ecs_gc();
+#endif
   }
-  void pause_input_backend() { ca_input_backend->stop_input(); }
-  void list_devices() { ca_backend->list_devices(); }
+  void pause_input_backend() {
+#if SSS_HAVE_COREAUDIO
+    ca_input_backend->stop_input();
+#endif
+  }
+  void list_devices() {
+#if SSS_HAVE_COREAUDIO
+    ca_backend->list_devices();
+#endif
+  }
+
   // void pause_input_backend() { ca_input_backend->stop(); }
 };

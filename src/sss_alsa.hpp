@@ -1,14 +1,14 @@
 #include <alsa/asoundlib.h>
 #include <alsa/global.h>
 #include <cstdlib>
-//#include "sss_backend.hpp"
+#include <string>
+// #include "sss_backend.hpp"
 
 #include "sss_alsa_input.hpp"
 
 class AlsaBackend;
 
 void async_callback(snd_async_handler_t *handler);
-
 
 class AlsaBackend {
 public:
@@ -33,7 +33,9 @@ public:
   int sample_rate;
   snd_pcm_format_t format;
   double sw_latency;
-  int bytes_per_frame; int bytes_per_sample; SSS_Backend<float>* sss_backend;
+  int bytes_per_frame;
+  int bytes_per_sample;
+  SSS_Backend<float> *sss_backend;
 
   AlsaBackend(int sample_rate, int channels, int bytes_per_frame,
               int frame_count)
@@ -46,9 +48,9 @@ public:
   void async_callback(snd_async_handler_t *handler) {
       sss_backend->mixer->sample_output_nodes();
       snd_pcm_t *pcm_handle = snd_async_handler_get_pcm(handler);
-      AlsaBackend* data = (AlsaBackend*)snd_async_handler_get_callback_private(handler);
-      auto avail = snd_pcm_avail_update(pcm_handle);
-      float* buffer = new float[avail];
+      AlsaBackend* data =
+  (AlsaBackend*)snd_async_handler_get_callback_private(handler); auto avail =
+  snd_pcm_avail_update(pcm_handle); float* buffer = new float[avail];
       sss_backend->get(avail, &buffer);
       while (avail >= period_size) {
           snd_pcm_writei(pcm_handle, buffer, period_size);
@@ -80,9 +82,9 @@ public:
   }
 
   // creates a new backend
-  AlsaBackend *init_alsa_out() {
+  AlsaBackend *init_alsa_out(std::string out_device = "default") {
     int err;
-    err = snd_pcm_open(&this->handle, this->out_device.c_str(),
+    err = snd_pcm_open(&this->handle, out_device.c_str(),
                        SND_PCM_STREAM_PLAYBACK, 0);
 
     if (err < 0) {
@@ -145,7 +147,8 @@ public:
 
     snd_async_handler_t *callback_handler;
 
-    snd_async_add_pcm_handler(&callback_handler, this->handle, async_callback, this);
+    snd_async_add_pcm_handler(&callback_handler, this->handle, async_callback,
+                              this);
 
     return this;
   }
@@ -172,17 +175,18 @@ public:
   }
 };
 
-void async_callback(snd_async_handler_t *handler){
-    AlsaBackend* data = (AlsaBackend*)snd_async_handler_get_callback_private(handler);
-    auto sss_backend = data->sss_backend;
-    sss_backend->mixer->sample_output_nodes();
-    snd_pcm_t *pcm_handle = snd_async_handler_get_pcm(handler);
-    auto avail = snd_pcm_avail_update(pcm_handle);
-    float* buffer = new float[avail];
-    sss_backend->get(avail, &buffer);
-    auto period_size = data->period_size;
-    while (avail >= period_size) {
-        snd_pcm_writei(pcm_handle, buffer, period_size);
-        avail = snd_pcm_avail_update(pcm_handle);
-    }
+void async_callback(snd_async_handler_t *handler) {
+  AlsaBackend *data =
+      (AlsaBackend *)snd_async_handler_get_callback_private(handler);
+  auto sss_backend = data->sss_backend;
+  sss_backend->mixer->sample_output_nodes();
+  snd_pcm_t *pcm_handle = snd_async_handler_get_pcm(handler);
+  auto avail = snd_pcm_avail_update(pcm_handle);
+  float *buffer = new float[avail];
+  sss_backend->get(avail, &buffer);
+  auto period_size = data->period_size;
+  while (avail >= period_size) {
+    snd_pcm_writei(pcm_handle, buffer, period_size);
+    avail = snd_pcm_avail_update(pcm_handle);
   }
+}
