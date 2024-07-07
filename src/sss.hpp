@@ -10,16 +10,27 @@
 #endif
 
 #include <set>
-// the aim of this file is to expose a good portion of the
-// simple sound system api
-// such as
-// pause()
-// play()
-// startup()
-// new_node()
 
-// T here refers to the format of the buffer data
-// probably want to use SSS_FMT in the future
+#if SSS_HAVE_ALSA
+  void pcm_write_cb(AlsaBackend* alsa_backend) {
+	auto sss_backend = alsa_backend->sss_backend;
+		auto buff_size = alsa_backend->period_size;
+		float* buffer = new float[buff_size];
+
+	while(1) {
+		//auto avail = snd_pcm_avail_update(alsa_backend->handle);
+		//if (avail>0) {
+  		sss_backend->stage_out_nodes(alsa_backend->device_id, buff_size/2);
+  		sss_backend->mixer->sample_output_nodes_ecs();
+  		sss_backend->get(buff_size/2, &buffer, alsa_backend->device_id);
+
+    	auto res = snd_pcm_writei(alsa_backend->handle, buffer, (snd_pcm_uframes_t)buff_size/2);
+
+		//}
+	}
+ }
+#endif
+
 template <typename T> class SSS {
 public:
   using fn_type = std::function<std::size_t(SSS_Node<T> *, std::size_t)>;
@@ -32,7 +43,7 @@ public:
   uint8_t bits_per_sample;
   uint8_t bytes_per_frame;
   SSS_Backend<T> *sss_backend; // holds mixer handle
-  std::set<uint32_t> open_devices;
+  std::set<std::string> open_devices;
 
 #if SSS_HAVE_COREAUDIO
   CoreAudioBackend<T> *ca_backend;
@@ -40,8 +51,8 @@ public:
 #endif
 
 #if SSS_HAVE_ALSA
-  AlsaAlsaBackend *alsa_backend;
-  AlsaAlsaInputBackend *alsa_input_backend;
+  AlsaBackend *alsa_backend;
+  AlsaInputBackend *alsa_input_backend;
 #endif
 
   void push_node(NodeType nt, fn_type fn, void *fn_data,
@@ -56,8 +67,12 @@ public:
 
   void register_mixer_node_ecs(SSS_Node<T> *node) {
     if (!open_devices.contains(node->device_id)) {
-      std::cout << "setting up new device\n";
+#if SSS_HAVE_COREAUDIO
       ca_backend->ca_open_device(node->device_id);
+#endif 
+#if SSS_HAVE_ALSA
+	 alsa_backend->init_alsa_out(node->device_id);
+#endif
       open_devices.insert(node->device_id);
     }
     auto ecs_idx = this->sss_backend->mixer->register_node_ecs(node);
@@ -84,10 +99,10 @@ public:
 
 #if SSS_HAVE_ALSA
     alsa_backend =
-        new AlsaBackend(sample_rate, channels, bytes_per_frame, frame_count);
+        new AlsaBackend(rate, channels, bytes_per_frame, frame_count);
     alsa_backend->sss_backend = sss_backend;
 
-    alsa_input_backend = new AlsaInputBackend(sample_rate, channels,
+    alsa_input_backend = new AlsaInputBackend(rate, channels,
                                               bytes_per_frame, frame_count);
     alsa_input_backend->sss_backend = sss_backend;
 #endif
@@ -95,13 +110,14 @@ public:
 
   void set_mixer_fn(mixer_fn m_fn) { sss_backend->set_mixer_fn(m_fn); }
 
+
   void init_output_backend() {
 #if SSS_HAVE_COREAUDIO
     ca_backend->ca_open_device();
     open_devices.insert(73); // 73 = default coreaudio
 #endif
 #if SSS_HAVE_ALSA
-    alsa_backend->init_alsa_out();
+    //alsa_backend->init_alsa_out();
 #endif
   }
 
@@ -110,7 +126,7 @@ public:
     ca_input_backend->ca_open_input();
 #endif
 #if SSS_HAVE_ALSA
-    alsa_input_backend->init_alsa_input();
+    //alsa_input_backend->init_alsa_in();
 #endif
   }
   void start_output_backend() {
@@ -118,6 +134,11 @@ public:
 #if SSS_HAVE_COREAUDIO
     for (auto i : open_devices)
       ca_backend->start(i);
+#endif
+#if SSS_HAVE_ALSA
+	alsa_backend->start_alsa_output();
+	std::jthread pcm_thread(pcm_write_cb, this->alsa_backend);
+	pcm_thread.detach();
 #endif
   }
   void start_input_backend() {

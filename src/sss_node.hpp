@@ -33,7 +33,7 @@ public:
   fn_type fun;
   NodeType nt;
   int channels;
-  uint32_t device_id;
+  std::string device_id;
   std::string node_id;
   SSS_File *file;
   float *temp_buffer;
@@ -46,7 +46,7 @@ public:
 
   size_t ecs_idx;
 
-  std::size_t run_fn() { return fun(this, buff_size); }
+  std::size_t run_fn(size_t n_samples) { return fun(this, n_samples); }
 
   // for node lists
   SSS_Node<T> *next;
@@ -54,7 +54,7 @@ public:
 
   // TODO:
   // should probably figure out optimal buffer sizes here
-  SSS_Node(NodeType type, fn_type fn, int ch, std::size_t s, uint32_t id)
+  SSS_Node(NodeType type, fn_type fn, int ch, std::size_t s, std::string id)
       : nt(type), channels(ch), buff_size(s * 2), device_id(id) {
     this->fun = fn;
     node_buffer = new SSS_Buffer<T>(s * 4);
@@ -66,7 +66,7 @@ public:
   }
 
   SSS_Node(NodeType type, fn_type fn, int ch, std::size_t s,
-           std::string node_id, uint32_t device_id, void *fn_data)
+           std::string node_id, std::string device_id, void *fn_data)
       : nt(type), channels(ch), buff_size(s), node_id(node_id),
         device_id(device_id), fn_data(fn_data) {
     this->fun = fn;
@@ -79,7 +79,7 @@ public:
   }
 
   // TODO: fix id
-  SSS_Node(NodeType type, fn_type fn, int ch, std::size_t s, uint32_t id,
+  SSS_Node(NodeType type, fn_type fn, int ch, std::size_t s, std::string id,
            std::string file_path)
       : nt(type), channels(ch), buff_size(s), device_id(id) {
     this->fun = fn;

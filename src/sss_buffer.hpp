@@ -1,4 +1,3 @@
-// #include "spsc_buffer.hpp"
 #include <algorithm>
 #include <array>
 #include <atomic>
@@ -12,6 +11,7 @@ public:
   void clear_buffer() { memset(_data, 0, _size); }
 
   int get_avail() { return _write_samples_avail; }
+  int get_size() { return _size; }
 
   SSS_Buffer(std::size_t s) {
     _size = s;
@@ -22,22 +22,23 @@ public:
   }
 
   int read_n(T *dest, int num_samples) {
-    if (dest == nullptr || num_samples <= 0 || _write_samples_avail == _size) {
+    if (num_samples <= 0 || _write_samples_avail == _size) {
       return 0;
-    }
+    } 
 
-    int read_samples_avail = _size - _write_samples_avail;
+	int read_samples_avail = _size - _write_samples_avail;
 
     if (num_samples > read_samples_avail) {
       num_samples = read_samples_avail;
     }
 
     for (std::size_t i = 0; i < num_samples; i++) {
-      dest[i] = _data[_read_ptr++];
       if (_read_ptr == _size) {
         _read_ptr = 0;
       }
-      _write_samples_avail += 1;
+      dest[i] = _data[_read_ptr];
+	  _read_ptr++;
+     _write_samples_avail += 1;
       // if (_read_ptr == _write_ptr)
       //  break;
     }

@@ -24,23 +24,25 @@ set_target_properties(sss_record PROPERTIES
   CXX_EXTENSIONS OFF
 )
 
+#set(CMAKE_CXX_FLAGS "-g -ggdb -fsanitize=address")
+set(CMAKE_CXX_FLAGS "-g -ggdb")
+
 include(CheckIncludeFileCXX)
 
 # Set options
-option(ENABLE_ALSA "Enable ALSA backend" OFF)
-option(ENABLE_COREAUDIO "Enable CoreAudio backend" ON)
+option(ENABLE_ALSA "Enable ALSA backend" ON)
+option(ENABLE_COREAUDIO "Enable CoreAudio backend" OFF)
 
 if(ENABLE_ALSA)
-    find_package(ALSA)
+    find_package(ALSA REQUIRED)
     if(ALSA_FOUND)
         set(STATUS_ALSA "OK")
         set(SSS_HAVE_ALSA true)
         include_directories(${ALSA_INCLUDE_DIRS})
-        check_include_file_cxx(alsa/asoundlib.h SSS_HAVE_ALSA)
-        if(SSS_HAVE_ALSA)
-            target_compile_definitions(sss PRIVATE SSS_HAVE_ALSA=1)
-            target_link_libraries(sss PRIVATE ${ALSA_LIBRARIES})
-        endif()
+        target_compile_definitions(sss PRIVATE SSS_HAVE_ALSA=1)
+        target_link_libraries(sss PRIVATE ${ALSA_LIBRARIES})
+        target_link_libraries(sss_sine PRIVATE ${ALSA_LIBRARIES})
+        target_link_libraries(sss_record PRIVATE ${ALSA_LIBRARIES})
     else()
         set(STATUS_ALSA "not found")
         set(SSS_HAVE_ALSA false)
@@ -53,24 +55,21 @@ else()
 endif()
 
 if(ENABLE_COREAUDIO)
-    find_package(COREAUDIO)
-    if(COREAUDIO_FOUND)
+    find_library(AUDIO_UNIT_LIBRARY NAMES AudioUnit REQUIRED)
+    find_library(CORE_AUDIO_LIBRARY NAMES CoreAudio REQUIRED)
+    find_library(COREFOUNDATION_LIBRARY NAMES CoreFoundation REQUIRED)
+    find_library(AVFOUNDATION_LIBRARY NAMES AVFoundation REQUIRED)
+    
+    if(AUDIO_UNIT_LIBRARY AND CORE_AUDIO_LIBRARY AND COREFOUNDATION_LIBRARY AND AVFOUNDATION_LIBRARY)
         set(STATUS_COREAUDIO "OK")
         set(SOUNDIO_HAVE_COREAUDIO true)
-        include_directories(${COREAUDIO_INCLUDE_DIR})
-
-        find_path(COREFOUNDATION_INCLUDE_DIR NAMES CoreFoundation.h)
-        find_library(COREFOUNDATION_LIBRARY NAMES CoreFoundation)
-        include_directories(${COREFOUNDATION_INCLUDE_DIR})
-
-        find_path(AUDIOUNIT_INCLUDE_DIR NAMES AudioUnit.h)
-        find_library(AUDIOUNIT_LIBRARY NAMES AudioUnit)
-        include_directories(${AUDIOUNIT_INCLUDE_DIR})
-
+        
         check_include_file_cxx(CoreAudio/CoreAudio.h SSS_HAVE_COREAUDIO)
         if (SSS_HAVE_COREAUDIO)
             target_compile_definitions(sss PRIVATE SSS_HAVE_COREAUDIO=1)
-            target_link_libraries(sss PRIVATE ${COREAUDIO_LIBRARY} ${COREFOUNDATION_LIBRARY} ${AUDIOUNIT_LIBRARY})
+            target_link_libraries(sss PRIVATE ${CORE_AUDIO_LIBRARY} ${COREFOUNDATION_LIBRARY} ${AUDIO_UNIT_LIBRARY} ${AVFOUNDATION_LIBRARY})
+            target_link_libraries(sss_sine PRIVATE ${CORE_AUDIO_LIBRARY} ${COREFOUNDATION_LIBRARY} ${AUDIO_UNIT_LIBRARY} ${AVFOUNDATION_LIBRARY})
+            target_link_libraries(sss_record PRIVATE ${CORE_AUDIO_LIBRARY} ${COREFOUNDATION_LIBRARY} ${AUDIO_UNIT_LIBRARY} ${AVFOUNDATION_LIBRARY})
         endif()
     else()
         set(STATUS_COREAUDIO "not found")
@@ -87,16 +86,6 @@ else()
     set(AUDIOUNIT_LIBRARY "")
 endif()
 
-find_library(AUDIO_UNIT_LIBRARY AudioUnit REQUIRED)
-find_library(CORE_AUDIO_LIBRARY CoreAudio REQUIRED)
-find_library(COREFOUNDATION_LIBRARY CoreFoundation REQUIRED)
-find_library(AVFOUNDATION_LIBRARY AVFoundation REQUIRED)
-
-# Link libraries for the executable
-target_link_libraries(sss PUBLIC ${AUDIO_UNIT_LIBRARY} ${CORE_AUDIO_LIBRARY} ${COREFOUNDATION_LIBRARY} ${AVFOUNDATION_LIBRARY})
-target_link_libraries(sss_sine PUBLIC ${AUDIO_UNIT_LIBRARY} ${CORE_AUDIO_LIBRARY} ${COREFOUNDATION_LIBRARY} ${AVFOUNDATION_LIBRARY})
-target_link_libraries(sss_record PUBLIC ${AUDIO_UNIT_LIBRARY} ${CORE_AUDIO_LIBRARY} ${COREFOUNDATION_LIBRARY} ${AVFOUNDATION_LIBRARY})
-
 # Compiler options
 target_compile_options(sss PRIVATE -Wall -ggdb -g)
 
@@ -105,3 +94,4 @@ configure_file(
     "${SSS_SOURCE_DIR}/src/config.h.in"
     "${SSS_SOURCE_DIR}/src/config.h"
 )
+

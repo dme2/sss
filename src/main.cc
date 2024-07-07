@@ -145,9 +145,9 @@ int main() {
 
   // auto node1 = new SSS_Node<float>(OUTPUT, fn, 2, 1024, "default", fn_d1);
   // auto node2 = new SSS_Node<float>(OUTPUT, fn, 2, 1024, "default2", fn_d2);
-  auto node3 = new SSS_Node<float>(FILE_OUT, f_fn, 2, 1024, 73, "output2.raw");
+  auto node3 = new SSS_Node<float>(FILE_OUT, f_fn, 2, 1024, "default", "output2.raw");
   auto node4 =
-      new SSS_Node<float>(FILE_INPUT, i_fn, 2, 1024, 73, "output_test");
+      new SSS_Node<float>(FILE_INPUT, i_fn, 2, 1024, "default", "output_test");
 
   // node1->next = node2;
   // sss_handle->register_mixer_node(node1);

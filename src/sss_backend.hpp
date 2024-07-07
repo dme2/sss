@@ -27,7 +27,7 @@ public:
   int fmt_bits;
   int fmt_bytes;
   std::size_t num_bytes; // frame_count * channels * fmt_bytes;
-  std::unordered_map<uint32_t, std::vector<size_t>> device_node_map;
+  std::unordered_map<std::string, std::vector<size_t>> device_node_map;
   SSS_Mixer<T> *mixer;
 
   SSS_Backend(uint8_t channels, int sample_rate, int frame_count, SSS_FMT fmt,
@@ -47,21 +47,20 @@ public:
   void set_mixer_fn(mixer_fn mixer_fn) { mixer->mixer_fn = mixer_fn; }
 
   // TODO: rename?
-  void get(std::size_t n_frames, T **buff, uint32_t device_id) {
+  void get(std::size_t n_frames, T **buff, std::string device_id) {
     mixer->sample_mixer_buffer_out(n_frames * channels, buff, device_id);
   }
 
   // adds output nodes belonging to device_id to the message queue
-  void stage_out_nodes(uint32_t device_id) {
+  void stage_out_nodes(std::string device_id, size_t n_samples) {
     for (auto n : device_node_map[device_id]) {
-      // std::cout << "enqueu!\n";
-      mixer->msg_queue->push_msg(n, device_id, SAMPLE_NODE, 0);
+      mixer->msg_queue->push_msg(n, device_id, SAMPLE_NODE, 0, n_samples*channels);
     }
   }
 
-  void stage_in_nodes(uint32_t device_id) {}
+  void stage_in_nodes(std::string device_id) {}
 
-  void handle_in(std::size_t n_bytes, T **buff, uint32_t device_id) {
+  void handle_in(std::size_t n_bytes, T **buff, std::string device_id) {
     mixer->sample_mixer_buffer_in(n_bytes, buff, device_id);
   }
 };

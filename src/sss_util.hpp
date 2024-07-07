@@ -54,7 +54,7 @@ unsigned char *float_to_uchar(float *buff, std::size_t n_floats) {
 }
 
 // expects the source samples to be chars representing s16 stereo
-int32_t *convert_s16_to_32(std::vector<char> &samples, int num_samples) {
+int32_t *convert_s16_to_i32(std::vector<char> &samples, int num_samples) {
   auto samples_16 = reinterpret_cast<int16_t *>(samples.data());
   auto samples_32 = new int32_t[num_samples];
   for (int i = 0; i < num_samples; i += 1) {

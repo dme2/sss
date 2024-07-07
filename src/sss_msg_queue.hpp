@@ -6,12 +6,13 @@ enum Action { SAMPLE_NODE, HANDLE_INPUT, PAUSE, CHANGE_VOLUME };
 
 struct SSS_Msg {
   size_t node_idx;
-  uint32_t device_id;
+  std::string device_id;
   Action action;
   float vol;
+  size_t req_bytes;
 
-  SSS_Msg(size_t node, uint32_t dev, Action a, float v)
-      : node_idx(node), device_id(dev), action(a), vol(v) {}
+  SSS_Msg(size_t node, std::string dev, Action a, float v, size_t rb)
+      : node_idx(node), device_id(dev), action(a), vol(v), req_bytes(rb) {}
 
   SSS_Msg() {}
 };
@@ -21,9 +22,9 @@ public:
   SSS_Fifo<SSS_Msg> *msg_queue;
   std::mutex queue_mutex;
 
-  void push_msg(size_t node_idx, uint32_t device_id, Action action,
-                float volume) {
-    auto msg = SSS_Msg(node_idx, device_id, action, volume);
+  void push_msg(size_t node_idx, std::string device_id, Action action,
+                float volume, size_t rb) {
+    auto msg = SSS_Msg(node_idx, device_id, action, volume, rb);
     msg_queue->enqueue(msg);
   }
 

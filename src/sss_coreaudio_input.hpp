@@ -99,14 +99,11 @@ public:
       return -1;
     }
     auto ca_data = (CoreAudioInputBackend *)user_data;
-    // std::cout << "starting sampling input\n";
-    //  ca_data->sss_backend->mixer->sample_output_nodes();
-    // std::cout << inInputData->mNumberBuffers << std::endl;
     auto n_bytes = inInputData->mBuffers[0].mDataByteSize;
     auto audio_data = (float *)inInputData->mBuffers[0].mData;
     auto n = ca_data->backend->mixer->input_node_map[79];
     n->temp_buffer = audio_data;
-    ca_data->backend->handle_in(n_bytes, &audio_data, inDevice);
+    ca_data->backend->handle_in(n_bytes, &audio_data, std::to_string(inDevice));
 
     return noErr;
   }

@@ -93,7 +93,7 @@ public:
   std::vector<T> scratch_buff;
 
   // a mixer and scratch buffer for each device (indexed by device)
-  std::unordered_map<uint32_t, SSS_Buffer<T> *> mixer_buffers;
+  std::unordered_map<std::string, SSS_Buffer<T> *> mixer_buffers;
   std::vector<std::vector<T>> scratch_buffs;
 
   SSS_ThreadPool *thread_pool;
@@ -101,10 +101,10 @@ public:
   std::vector<SSS_Node<T> *> output_nodes;
   std::vector<SSS_Node<T> *> input_nodes;
   // device_id -> Node
-  std::unordered_map<int, SSS_Node<T> *> input_node_map;
+  std::unordered_map<std::string, SSS_Node<T> *> input_node_map;
 
-  std::unordered_map<uint32_t, std::vector<int>> output_node_map;
-  std::unordered_map<uint32_t, int> output_node_idx_count;
+  std::unordered_map<std::string, std::vector<int>> output_node_map;
+  std::unordered_map<std::string, int> output_node_idx_count;
 
   SSS_NodeList<T> *input_node_list;
   SSS_NodeList<T> *output_node_list;
@@ -113,7 +113,6 @@ public:
 
   // TODO: list of indices should be laid out as:
   //  output_map["output_device"] = std::vector<int> indices
-  std::vector<int> out_node_ecs_idx;
   std::vector<int> in_node_ecs_idx;
   size_t num_out_idx;
   size_t num_in_idx;
@@ -142,6 +141,7 @@ public:
     }
   }
 
+/*
   void register_node(SSS_Node<T> *node) {
     if (node->nt == OUTPUT || node->nt == FILE_OUT) {
       // output_nodes.push_back(node);
@@ -156,6 +156,7 @@ public:
         thread_pool->register_in_thread(node);
     }
   }
+*/
 
   size_t register_node_ecs(SSS_Node<T> *node) {
     std::optional<int> res = node_ecs.add_node(node);
@@ -163,15 +164,15 @@ public:
       return -1;
     if (run_multithreaded) {
       if (node->nt == FILE_INPUT) {
-        input_node_map[79] = node; // TODO
+        input_node_map["79"] = node; // TODO
         thread_pool->register_in_thread_ecs(res.value());
         this->in_node_ecs_idx.push_back(res.value());
         num_in_idx += 1;
       } else {
         thread_pool->register_out_thread_ecs(res.value());
-        this->out_node_ecs_idx.push_back(res.value());
         if (!mixer_buffers.contains(node->device_id)) {
-          mixer_buffers[node->device_id] = new SSS_Buffer<T>(this->buff_size);
+			std::cout << "mixer " <<  this->buff_size << std::endl;
+          mixer_buffers[node->device_id] = new SSS_Buffer<T>(5000); // TODO: this->buff_size
         }
         this->output_node_map[node->device_id].push_back(res.value());
         this->output_node_idx_count[node->device_id] += 1;
@@ -179,13 +180,12 @@ public:
       }
     } else {
       if (node->nt == FILE_INPUT) {
-        input_node_map[79] = node; // TODO
+        input_node_map["79"] = node; // TODO
         this->in_node_ecs_idx.push_back(res.value());
         num_in_idx += 1;
       } else {
-        // this->out_node_ecs_idx.push_back(res.value());
         if (!mixer_buffers.contains(node->device_id)) {
-          mixer_buffers[node->device_id] = new SSS_Buffer<T>(this->buff_size);
+          mixer_buffers[node->device_id] = new SSS_Buffer<T>(5000); // TODO: this->buff_size
         }
         this->output_node_map[node->device_id].push_back(res.value());
         this->output_node_idx_count[node->device_id] += 1;
@@ -227,7 +227,7 @@ public:
 
   void pause_node_ecs(size_t idx) {
     auto n = node_ecs.node_ecs[idx];
-    n->pause_node;
+    //n->pause_node;
   }
 
   /*
@@ -246,16 +246,16 @@ public:
     auto msg = msg_queue->pop_msg();
     if (msg.has_value()) {
       auto node = node_ecs.node_ecs[msg->node_idx];
-      node->run_fn();
+      node->run_fn(msg->req_bytes);
       return true;
     } else
       return false;
   }
 
   // TODO: pass device str
-  void sample_output_nodes_ecs(uint32_t device_id) {
+  void sample_output_nodes_ecs() {
     if (run_multithreaded) {
-      thread_pool->signal_threads(device_id);
+      thread_pool->signal_threads();
     } else {
       do {
         // ...
@@ -279,12 +279,11 @@ public:
   //  i.e. it's a tail node in a list of nodes, dependent
   //  on the previous nodes for it's data
   void sample_mixer_buffer_out(std::size_t n_samples, T **buff,
-                               uint32_t device_id) {
+                               std::string device_id) {
     auto cur_mixer_buffer = mixer_buffers[device_id];
     cur_mixer_buffer->read_n(*buff, n_samples);
     scratch_buff = std::vector<T>(n_samples, 0);
     for (int i = 0; i < output_node_idx_count[device_id]; i++) {
-      // for (size_t i = 0; i < num_out_idx; i++) {
       auto idx = output_node_map[device_id][i];
       auto n = node_ecs.node_ecs[idx];
       std::vector<T> cur_node_buff;
@@ -292,25 +291,9 @@ public:
         std::cout << "err on getting buffer sending silence\n";
         cur_node_buff = std::vector<T>(n_samples, 0);
       }
-
       if (scratch_buff.size() != cur_node_buff.size())
         std::cout << "mismatch!\n";
-      // auto out_buff = new T[n_samples];
-      // std::cout << cur_node_buff.size() << " " << n_samples << std::endl;
-      // if (n->nt == FILE_OUT) {
-      // cur_node_buff = n->temp_buffer;
-      // } else {
-      // float res;
-      // for (int i = 0; i < n_samples; i++) {
-      // out_buff[i] = cur_node_buff[i];
-      //   if (n->node_queue->dequeue(res))
-      //    cur_node_buff[i] = res;
-      //   else
-      //    std::cout << "err on dequeue!\n";
-      // }
-      //}
-      //}
-      //  mix into scratch_buff
+
       if (mixer_fn != nullptr) {
         this->mixer_fn(this, &cur_node_buff, n_samples);
       }
@@ -319,18 +302,18 @@ public:
   }
 
   void sample_mixer_buffer_in(std::size_t n_bytes, T **buff,
-                              uint32_t device_id) {
+                              std::string device_id) {
     if (run_multithreaded) {
       // if (!thread_pool->get_run_status()) {
       //  thread_pool->start_threads();
       // }
-      thread_pool->signal_in_threads(device_id);
+      thread_pool->signal_in_threads();
     } else {
       for (size_t i = 0; i < num_in_idx; i++) {
         // TODO
         // only handle nodes that are associated with the device_id
-        auto node = node_ecs.node_ecs[in_node_ecs_idx[i]];
-        node->run_fn();
+        //auto node = node_ecs.node_ecs[in_node_ecs_idx[i]];
+        //node->run_fn();
       }
     }
   }

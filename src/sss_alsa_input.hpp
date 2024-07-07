@@ -33,6 +33,8 @@ public:
   int bytes_per_sample;
   SSS_Backend<float> *sss_backend;
 
+  std::string device_id;
+
   AlsaInputBackend(int sample_rate, int channels, int bytes_per_frame,
                    int frame_count)
       : sample_rate(sample_rate), channel_count(channels),
@@ -175,11 +177,11 @@ void async_input_callback(snd_async_handler_t *handler) {
   AlsaInputBackend *data =
       (AlsaInputBackend *)snd_async_handler_get_callback_private(handler);
   auto sss_backend = data->sss_backend;
-  sss_backend->mixer->sample_output_nodes();
+  //sss_backend->mixer->sample_input_nodes_ecs();
   snd_pcm_t *pcm_handle = snd_async_handler_get_pcm(handler);
   auto avail = snd_pcm_avail_update(pcm_handle);
   float *buffer = new float[data->period_size]; // TODO: channels here?
   auto period_size = data->period_size;
   snd_pcm_readi(pcm_handle, buffer, period_size);
-  sss_backend->handle_in(period_size, &buffer);
+  sss_backend->handle_in(period_size, &buffer, data->device_id);
 }
