@@ -26,6 +26,7 @@ template <typename T> class SSS_Node {
 public:
   using fn_type = std::function<std::size_t(SSS_Node *, std::size_t)>;
   SSS_Fifo<std::vector<T>> *node_buffer_fifo;
+  SSS_Fifo<T *> *node_input_buffer_fifo;
   std::size_t buff_size;
   SSS_Buffer<T> *node_buffer;
   SSS_Fifo<T> *node_queue;
@@ -60,6 +61,7 @@ public:
     node_buffer = new SSS_Buffer<T>(s * 4);
     node_queue = new SSS_Fifo<T>(s * 4);
     node_buffer_fifo = new SSS_Fifo<std::vector<T>>(32);
+    node_input_buffer_fifo = new SSS_Fifo<T *>(32);
 
     for (std::size_t i = 0; i < s * 4; i++)
       node_queue->enqueue(0);
@@ -73,6 +75,7 @@ public:
     node_buffer = new SSS_Buffer<T>(s * 4);
     node_queue = new SSS_Fifo<T>(s * 4);
     node_buffer_fifo = new SSS_Fifo<std::vector<T>>(32);
+    node_input_buffer_fifo = new SSS_Fifo<T *>(32);
 
     for (std::size_t i = 0; i < s * 4; i++)
       node_queue->enqueue(0);
@@ -86,6 +89,7 @@ public:
     node_buffer = new SSS_Buffer<T>(s);
     node_queue = new SSS_Fifo<T>(s * 2);
     node_buffer_fifo = new SSS_Fifo<std::vector<T>>(16);
+    node_input_buffer_fifo = new SSS_Fifo<T *>(32);
     temp_buffer = new float[s];
     if (type == FILE_INPUT)
       file = new SSS_File(file_path, true);

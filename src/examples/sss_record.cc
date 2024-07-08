@@ -21,7 +21,9 @@ void mixer_fn(SSS_Mixer<float> *mixer, std::vector<float> *buff,
 }
 
 std::size_t input_fn(SSS_Node<float> *node, std::size_t num_bytes) {
-  node->file->write_out_bytes(node->temp_buffer, node->buff_size);
+  float *rec_buff;
+  node->node_input_buffer_fifo->dequeue(rec_buff);
+  node->file->write_out_bytes(rec_buff, num_bytes);
   return 0;
 }
 

@@ -102,7 +102,8 @@ public:
     auto n_bytes = inInputData->mBuffers[0].mDataByteSize;
     auto audio_data = (float *)inInputData->mBuffers[0].mData;
     // auto n = ca_data->backend->mixer->input_node_map["79"]; // TODO
-    ca_data->backend->stage_in_nodes(std::to_string(inDevice), n_bytes / 8);
+    ca_data->backend->stage_in_nodes(std::to_string(inDevice), n_bytes / 8,
+                                     &audio_data);
     // n->temp_buffer = audio_data;
     //  ca_data->backend->handle_in(n_bytes, &audio_data,
     //  std::to_string(inDevice));

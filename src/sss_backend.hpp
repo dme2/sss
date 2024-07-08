@@ -60,8 +60,11 @@ public:
     }
   }
 
-  void stage_in_nodes(std::string device_id, size_t n_samples) {
+  void stage_in_nodes(std::string device_id, size_t n_samples, float **buffer) {
     for (auto n : input_device_node_map[device_id]) {
+      auto node = mixer->node_ecs.node_ecs[n];
+
+      node->node_input_buffer_fifo->enqueue(*buffer);
       mixer->msg_queue->push_msg(n, device_id, SAMPLE_NODE, 0,
                                  n_samples * channels);
     }
