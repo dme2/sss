@@ -30,8 +30,8 @@ set(CMAKE_CXX_FLAGS "-g -ggdb")
 include(CheckIncludeFileCXX)
 
 # Set options
-option(ENABLE_ALSA "Enable ALSA backend" ON)
-option(ENABLE_COREAUDIO "Enable CoreAudio backend" OFF)
+option(ENABLE_ALSA "Enable ALSA backend" OFF)
+option(ENABLE_COREAUDIO "Enable CoreAudio backend" ON)
 
 if(ENABLE_ALSA)
     find_package(ALSA REQUIRED)
