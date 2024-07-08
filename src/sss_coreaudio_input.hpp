@@ -101,14 +101,17 @@ public:
     auto ca_data = (CoreAudioInputBackend *)user_data;
     auto n_bytes = inInputData->mBuffers[0].mDataByteSize;
     auto audio_data = (float *)inInputData->mBuffers[0].mData;
-    auto n = ca_data->backend->mixer->input_node_map[79];
-    n->temp_buffer = audio_data;
-    ca_data->backend->handle_in(n_bytes, &audio_data, std::to_string(inDevice));
+    // auto n = ca_data->backend->mixer->input_node_map["79"]; // TODO
+    ca_data->backend->stage_in_nodes(std::to_string(inDevice), n_bytes / 8);
+    // n->temp_buffer = audio_data;
+    //  ca_data->backend->handle_in(n_bytes, &audio_data,
+    //  std::to_string(inDevice));
+    ca_data->backend->mixer->tick_mixer();
 
     return noErr;
   }
 
-  bool ca_open_input() {
+  bool ca_open_input(std::string device_id = "80") {
     UInt32 size = sizeof(input_device_id);
 
     AudioObjectPropertyAddress propertyAddress = {
@@ -125,7 +128,7 @@ public:
       return false;
     }
 
-    input_device_id = 79;
+    // input_device_id = 79;
 
     UInt32 data_size = 0;
 
@@ -157,6 +160,7 @@ public:
 
     // set buffer size
     UInt32 numFrames = (UInt32)num_frames;
+    std::cout << numFrames << std::endl;
     propertyAddress.mElement = kAudioDevicePropertyBufferFrameSize;
 
     AudioObjectPropertyAddress buffSizeAddress = {
@@ -237,13 +241,13 @@ public:
 
     // Print the format details
     printf("Sample Rate: %f\n", fmt.mSampleRate);
-    // printf("Format ID: %u\n", fmt.mFormatID);
-    // printf("Format Flags: %u\n", fmt.mFormatFlags);
-    // printf("Bytes Per Packet: %u\n", fmt.mBytesPerPacket);
-    // printf("Frames Per Packet: %u\n", fmt.mFramesPerPacket);
-    // printf("Bytes Per Frame: %u\n", fmt.mBytesPerFrame);
-    // printf("Channels Per Frame: %u\n", fmt.mChannelsPerFrame);
-    // printf("Bits Per Channel: %u\n", fmt.mBitsPerChannel);
+    printf("Format ID: %u\n", fmt.mFormatID);
+    printf("Format Flags: %u\n", fmt.mFormatFlags);
+    printf("Bytes Per Packet: %u\n", fmt.mBytesPerPacket);
+    printf("Frames Per Packet: %u\n", fmt.mFramesPerPacket);
+    printf("Bytes Per Frame: %u\n", fmt.mBytesPerFrame);
+    printf("Channels Per Frame: %u\n", fmt.mChannelsPerFrame);
+    printf("Bits Per Channel: %u\n", fmt.mBitsPerChannel);
 
     return true;
   }

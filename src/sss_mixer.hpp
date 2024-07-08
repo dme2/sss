@@ -124,8 +124,7 @@ public:
                      std::size_t n_samples)>
       mixer_fn;
 
-  SSS_Mixer(std::size_t buff_size, bool multithread = false, int mt_output = 0,
-            int mt_input = 0)
+  SSS_Mixer(std::size_t buff_size, bool multithread = false, int mt_output = 0)
       : buff_size(buff_size), run_multithreaded(multithread) {
     mixer_buffer = new SSS_Buffer<T>(buff_size);
     output_node_list = new SSS_NodeList<T>;
@@ -135,28 +134,27 @@ public:
 
     if (multithread) {
       std::cout << "multithreaded!\n";
-      thread_pool =
-          new SSS_ThreadPool(mt_output, mt_input, &node_ecs, msg_queue);
+      thread_pool = new SSS_ThreadPool(mt_output, &node_ecs, msg_queue);
       thread_pool->node_ecs_ = &node_ecs;
     }
   }
 
-/*
-  void register_node(SSS_Node<T> *node) {
-    if (node->nt == OUTPUT || node->nt == FILE_OUT) {
-      // output_nodes.push_back(node);
-      output_node_list->add_node(node);
-      if (run_multithreaded) {
-        thread_pool->register_out_thread(node);
+  /*
+    void register_node(SSS_Node<T> *node) {
+      if (node->nt == OUTPUT || node->nt == FILE_OUT) {
+        // output_nodes.push_back(node);
+        output_node_list->add_node(node);
+        if (run_multithreaded) {
+          thread_pool->register_out_thread(node);
+        }
+      } else {
+        input_node_map[79] = node;
+        input_node_list->add_node(node);
+        if (run_multithreaded)
+          thread_pool->register_in_thread(node);
       }
-    } else {
-      input_node_map[79] = node;
-      input_node_list->add_node(node);
-      if (run_multithreaded)
-        thread_pool->register_in_thread(node);
     }
-  }
-*/
+  */
 
   size_t register_node_ecs(SSS_Node<T> *node) {
     std::optional<int> res = node_ecs.add_node(node);
@@ -164,15 +162,15 @@ public:
       return -1;
     if (run_multithreaded) {
       if (node->nt == FILE_INPUT) {
-        input_node_map["79"] = node; // TODO
-        thread_pool->register_in_thread_ecs(res.value());
+        input_node_map[node->device_id] = node; // TODO
+        // thread_pool->register_in_thread_ecs(res.value());
         this->in_node_ecs_idx.push_back(res.value());
         num_in_idx += 1;
       } else {
-        thread_pool->register_out_thread_ecs(res.value());
+        // thread_pool->register_out_thread_ecs(res.value());
         if (!mixer_buffers.contains(node->device_id)) {
-			std::cout << "mixer " <<  this->buff_size << std::endl;
-          mixer_buffers[node->device_id] = new SSS_Buffer<T>(5000); // TODO: this->buff_size
+          mixer_buffers[node->device_id] =
+              new SSS_Buffer<T>(5000); // TODO: this->buff_size
         }
         this->output_node_map[node->device_id].push_back(res.value());
         this->output_node_idx_count[node->device_id] += 1;
@@ -180,12 +178,13 @@ public:
       }
     } else {
       if (node->nt == FILE_INPUT) {
-        input_node_map["79"] = node; // TODO
+        input_node_map[node->device_id] = node; // TODO
         this->in_node_ecs_idx.push_back(res.value());
         num_in_idx += 1;
       } else {
         if (!mixer_buffers.contains(node->device_id)) {
-          mixer_buffers[node->device_id] = new SSS_Buffer<T>(5000); // TODO: this->buff_size
+          mixer_buffers[node->device_id] =
+              new SSS_Buffer<T>(5000); // TODO: this->buff_size
         }
         this->output_node_map[node->device_id].push_back(res.value());
         this->output_node_idx_count[node->device_id] += 1;
@@ -227,7 +226,7 @@ public:
 
   void pause_node_ecs(size_t idx) {
     auto n = node_ecs.node_ecs[idx];
-    //n->pause_node;
+    // n->pause_node;
   }
 
   /*
@@ -250,6 +249,16 @@ public:
       return true;
     } else
       return false;
+  }
+
+  void tick_mixer(int n_ticks = 10) {
+    if (run_multithreaded) {
+      thread_pool->signal_threads();
+    } else {
+      do {
+        // ...
+      } while (pop_and_run_node());
+    }
   }
 
   // TODO: pass device str
@@ -307,13 +316,13 @@ public:
       // if (!thread_pool->get_run_status()) {
       //  thread_pool->start_threads();
       // }
-      thread_pool->signal_in_threads();
+      // thread_pool->signal_in_threads();
     } else {
       for (size_t i = 0; i < num_in_idx; i++) {
         // TODO
         // only handle nodes that are associated with the device_id
-        //auto node = node_ecs.node_ecs[in_node_ecs_idx[i]];
-        //node->run_fn();
+        // auto node = node_ecs.node_ecs[in_node_ecs_idx[i]];
+        // node->run_fn();
       }
     }
   }

@@ -56,7 +56,7 @@ public:
                   AudioDeviceID device_id) {
     AudioBuffer &buff = io_data->mBuffers[0];
     T *audio_data = (T *)buff.mData;
-    sss_backend->get(n_frames, &audio_data, device_id);
+    sss_backend->get(n_frames, &audio_data, std::to_string(device_id));
     return noErr;
   }
 
@@ -72,11 +72,12 @@ public:
       return -1;
     }
     auto ca_data = (CoreAudioBackend *)user_data;
-    ca_data->sss_backend->stage_out_nodes(inDevice);
-    ca_data->sss_backend->mixer->sample_output_nodes_ecs();
     auto n_bytes = io_data->mBuffers[0].mDataByteSize;
     auto chans = io_data->mBuffers[0].mNumberChannels;
     auto n_frames = n_bytes / 8; // TODO!!
+    ca_data->sss_backend->stage_out_nodes(std::to_string(inDevice), n_frames);
+    // ca_data->sss_backend->mixer->sample_output_nodes_ecs();
+    ca_data->sss_backend->mixer->tick_mixer();
     ca_data->render(n_frames, io_data, output_time_stamp, inDevice);
     return noErr;
   }
@@ -142,14 +143,14 @@ public:
     return true;
   }
 
-  bool ca_open_device(uint32_t out_id = 73) {
-    device_id = out_id;
+  bool ca_open_device(std::string out_id = "73") {
+    device_id = std::stoi(out_id);
     UInt32 size = sizeof(device_id);
     AudioObjectPropertyAddress propertyAddress = {
         kAudioHardwarePropertyDefaultOutputDevice,
         kAudioObjectPropertyScopeOutput, kAudioObjectPropertyElementMain};
 
-    if (out_id == 1) {
+    if (std::stoi(out_id) == 1) {
       OSStatus res =
           AudioObjectGetPropertyData(kAudioObjectSystemObject, &propertyAddress,
                                      0, NULL, &size, &device_id);
@@ -207,11 +208,8 @@ public:
 
     AudioStreamBasicDescription fmt;
     UInt32 dataSize = sizeof(fmt);
-    AudioObjectPropertyAddress fmt_address = {
-        kAudioDevicePropertyStreamFormat,
-        kAudioDevicePropertyScopeOutput // Change to
-                                        // kAudioDevicePropertyScopeInput
-    };
+    AudioObjectPropertyAddress fmt_address = {kAudioDevicePropertyStreamFormat,
+                                              kAudioDevicePropertyScopeOutput};
 
     status = AudioObjectGetPropertyData(device_id, &fmt_address, 0, NULL,
                                         &dataSize, &fmt);

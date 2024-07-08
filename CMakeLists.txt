@@ -30,8 +30,8 @@ set(CMAKE_CXX_FLAGS "-g -ggdb")
 include(CheckIncludeFileCXX)
 
 # Set options
-option(ENABLE_ALSA "Enable ALSA backend" ON)
-option(ENABLE_COREAUDIO "Enable CoreAudio backend" OFF)
+option(ENABLE_ALSA "Enable ALSA backend" OFF)
+option(ENABLE_COREAUDIO "Enable CoreAudio backend" ON)
 
 if(ENABLE_ALSA)
     find_package(ALSA REQUIRED)
@@ -59,11 +59,11 @@ if(ENABLE_COREAUDIO)
     find_library(CORE_AUDIO_LIBRARY NAMES CoreAudio REQUIRED)
     find_library(COREFOUNDATION_LIBRARY NAMES CoreFoundation REQUIRED)
     find_library(AVFOUNDATION_LIBRARY NAMES AVFoundation REQUIRED)
-    
+
     if(AUDIO_UNIT_LIBRARY AND CORE_AUDIO_LIBRARY AND COREFOUNDATION_LIBRARY AND AVFOUNDATION_LIBRARY)
         set(STATUS_COREAUDIO "OK")
         set(SOUNDIO_HAVE_COREAUDIO true)
-        
+
         check_include_file_cxx(CoreAudio/CoreAudio.h SSS_HAVE_COREAUDIO)
         if (SSS_HAVE_COREAUDIO)
             target_compile_definitions(sss PRIVATE SSS_HAVE_COREAUDIO=1)
@@ -94,4 +94,3 @@ configure_file(
     "${SSS_SOURCE_DIR}/src/config.h.in"
     "${SSS_SOURCE_DIR}/src/config.h"
 )
-

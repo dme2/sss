@@ -50,14 +50,14 @@ public:
   void run_assigned_nodes() {
     for (size_t i = 0; i < num_nodes; i++) {
       auto n = this->node_ecs_->node_ecs[ecs_handles_[i]];
-      //n->run_fn();
+      // n->run_fn();
     }
   }
 
   void run_assigned_nodes_dev() {
     for (size_t i = 0; i < num_nodes; i++) {
       auto n = this->node_ecs_->node_ecs[ecs_handles_[i]];
-      //n->run_fn();
+      // n->run_fn();
     }
   }
 
@@ -149,21 +149,14 @@ public:
   }
   */
 
-  SSS_ThreadPool(std::size_t n_out_threads, std::size_t n_in_threads,
-                 SSS_NodeECS<MAX_NODES> *ecs, SSS_Msg_Queue *msg_queue)
+  SSS_ThreadPool(std::size_t n_out_threads, SSS_NodeECS<MAX_NODES> *ecs,
+                 SSS_Msg_Queue *msg_queue)
       : n_out_threads(n_out_threads) {
 
     for (int i = 0; i < n_out_threads; i++) {
       auto new_thread = new SSS_Thread(i, ecs, msg_queue);
       // new_thread->node_ecs_ = this->node_ecs_;
       threads_.push_back(new_thread);
-      new_thread->start_thread();
-    }
-
-    for (int i = 0; i < n_in_threads; i++) {
-      auto new_thread = new SSS_Thread(i, ecs, msg_queue);
-      // new_thread->node_ecs_ = this->node_ecs_;
-      in_threads_.push_back(new_thread);
       new_thread->start_thread();
     }
   }
@@ -207,7 +200,7 @@ public:
     for (auto &n : nodes_[idx]) {
       auto cur_node = n;
       while (cur_node != nullptr) {
-        //cur_node->run_fn();
+        // cur_node->run_fn();
         cur_node = n->next;
       }
     }
@@ -223,11 +216,14 @@ public:
     }
   }
 
+  /*
   void signal_in_threads() {
     for (std::size_t i = 0; i < in_threads_.size(); i++) {
       in_threads_[i]->wakeup();
     }
   }
+
+  */
 
   // TODO:
   // need to handle the node graph more sensibly
@@ -261,11 +257,13 @@ public:
       cur_rr_index = 0;
   }
 
+  /*
   void register_in_thread_ecs(size_t idx) {
     threads_[cur_rr_in_index]->push_node_ecs(idx);
     if (cur_rr_in_index == n_in_threads)
       cur_rr_in_index = 0;
   }
+  */
 
   SSS_NodeECS<MAX_NODES> *node_ecs_;
 
