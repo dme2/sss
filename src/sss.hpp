@@ -12,8 +12,7 @@
 #include <set>
 
 #if SSS_HAVE_ALSA
-void pcm_write_cb(AlsaBackend *alsa_backend) {
-  auto sss_backend = alsa_backend->sss_backend;
+void pcm_write_cb(AlsaBackend *alsa_backend) { auto sss_backend = alsa_backend->sss_backend;
   auto buff_size = alsa_backend->period_size;
   float *buffer = new float[buff_size];
 
@@ -21,7 +20,7 @@ void pcm_write_cb(AlsaBackend *alsa_backend) {
     // auto avail = snd_pcm_avail_update(alsa_backend->handle);
     // if (avail>0) {
     sss_backend->stage_out_nodes(alsa_backend->device_id, buff_size / 2);
-    sss_backend->mixer->sample_output_nodes_ecs();
+    sss_backend->mixer->tick_mixer();
     sss_backend->get(buff_size / 2, &buffer, alsa_backend->device_id);
 
     auto res = snd_pcm_writei(alsa_backend->handle, buffer,
@@ -30,6 +29,21 @@ void pcm_write_cb(AlsaBackend *alsa_backend) {
     //}
   }
 }
+
+void pcm_read_cb(AlsaInputBackend *alsa_backend) {
+  auto sss_backend = alsa_backend->sss_backend;
+  auto buff_size = alsa_backend->period_size;
+  float *buffer = new float[buff_size];
+
+  while (1) {
+	auto res = snd_pcm_readi(alsa_backend->handle, buffer,
+                              (snd_pcm_uframes_t)buff_size);
+    sss_backend->stage_in_nodes(alsa_backend->device_id, buff_size, &buffer);
+    sss_backend->mixer->tick_mixer();
+  }
+}
+
+
 #endif
 
 template <typename T> class SSS {
@@ -75,7 +89,10 @@ public:
         ca_input_backend->ca_open_input();
 #endif
 #if SSS_HAVE_ALSA
-      alsa_backend->init_alsa_out(node->device_id);
+      if (node->nt != FILE_INPUT)
+      	alsa_backend->init_alsa_out(node->device_id);
+	  else 
+		alsa_input_backend->init_alsa_in(node->device_id);
 #endif
       open_devices.insert(node->device_id);
     }
@@ -150,6 +167,11 @@ public:
   void start_input_backend() {
 #if SSS_HAVE_COREAUDIO
     ca_input_backend->start_input();
+#endif
+#if SSS_HAVE_ALSA
+    alsa_input_backend->start_alsa_input();
+    std::jthread pcm_read_thread(pcm_read_cb, this->alsa_input_backend);
+    pcm_read_thread.detach();
 #endif
   }
 

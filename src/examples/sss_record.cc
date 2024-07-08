@@ -35,13 +35,13 @@ int main() {
 
   fn_type i_fn = input_fn;
   auto node1 =
-      new SSS_Node<float>(FILE_INPUT, i_fn, 2, 1024, "80", "recording.raw");
+      new SSS_Node<float>(FILE_INPUT, i_fn, 2, 1024, "plughw:0,0", "recording.raw");
 
   sss_handle->register_mixer_node_ecs(node1);
 
   // sss_handle->init_input_backend();
   sss_handle->start_input_backend();
-  sss_handle->list_devices();
+  //sss_handle->list_devices();
   std::this_thread::sleep_for(std::chrono::seconds(8));
   sss_handle->pause_input_backend();
   std::cout << "paused!\n";

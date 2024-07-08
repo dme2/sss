@@ -5,8 +5,6 @@
 
 class AlsaInputBackend;
 
-void async_callback(snd_async_handler_t *handler);
-
 class AlsaInputBackend {
 public:
   snd_pcm_t *handle;
@@ -88,6 +86,7 @@ public:
         0)
       std::cout << "err on hw params\n";
 
+    snd_pcm_sw_params_t *sw_params;
     snd_pcm_sw_params_malloc(&sw_params);
 
     if (set_sw_params(this->handle, sw_params) < 0)
@@ -234,7 +233,7 @@ public:
     return 0;
   }
 
-  void start_alsa_output() {
+  void start_alsa_input() {
     // snd_pcm_start(this->handle);
   }
 
@@ -260,20 +259,4 @@ public:
   }
 };
 
-void async_callback(snd_async_handler_t *handler) {
-  std::cout << "cb\n";
-  AlsaBackend *data =
-      (AlsaBackend *)snd_async_handler_get_callback_private(handler);
-  snd_pcm_t *pcm_handle = snd_async_handler_get_pcm(handler);
-  auto avail = snd_pcm_avail_update(pcm_handle) / 8;
-  auto sss_backend = data->sss_backend;
-  auto period_size = data->period_size;
-  while (avail >= period_size) {
-    float *buffer = new float[avail * 2];
-    sss_backend->stage_out_nodes(data->device_id, avail);
-    sss_backend->mixer->sample_output_nodes_ecs();
-    sss_backend->get(avail, &buffer, data->device_id);
-    snd_pcm_writei(pcm_handle, buffer, period_size);
-    avail = snd_pcm_avail_update(pcm_handle) / 8;
-  }
-}
+
