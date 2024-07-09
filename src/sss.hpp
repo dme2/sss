@@ -12,7 +12,8 @@
 #include <set>
 
 #if SSS_HAVE_ALSA
-void pcm_write_cb(AlsaBackend *alsa_backend) { auto sss_backend = alsa_backend->sss_backend;
+void pcm_write_cb(AlsaBackend *alsa_backend) {
+  auto sss_backend = alsa_backend->sss_backend;
   auto buff_size = alsa_backend->period_size;
   float *buffer = new float[buff_size];
 
@@ -36,13 +37,12 @@ void pcm_read_cb(AlsaInputBackend *alsa_backend) {
   float *buffer = new float[buff_size];
 
   while (1) {
-	auto res = snd_pcm_readi(alsa_backend->handle, buffer,
-                              (snd_pcm_uframes_t)buff_size);
+    auto res = snd_pcm_readi(alsa_backend->handle, buffer,
+                             (snd_pcm_uframes_t)buff_size);
     sss_backend->stage_in_nodes(alsa_backend->device_id, buff_size, &buffer);
     sss_backend->mixer->tick_mixer();
   }
 }
-
 
 #endif
 
@@ -90,9 +90,9 @@ public:
 #endif
 #if SSS_HAVE_ALSA
       if (node->nt != FILE_INPUT)
-      	alsa_backend->init_alsa_out(node->device_id);
-	  else 
-		alsa_input_backend->init_alsa_in(node->device_id);
+        alsa_backend->init_alsa_out(node->device_id);
+      else
+        alsa_input_backend->init_alsa_in(node->device_id);
 #endif
       open_devices.insert(node->device_id);
     }
@@ -147,6 +147,7 @@ public:
   void init_input_backend() {
 #if SSS_HAVE_COREAUDIO
     ca_input_backend->ca_open_input();
+    open_devices.insert("80"); // 80 = default coreaudio input
 #endif
 #if SSS_HAVE_ALSA
     // alsa_input_backend->init_alsa_in();

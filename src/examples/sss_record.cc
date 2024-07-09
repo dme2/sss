@@ -39,7 +39,7 @@ int main() {
 
   sss_handle->register_mixer_node_ecs(node1);
 
-  // sss_handle->init_input_backend();
+  sss_handle->init_input_backend();
   sss_handle->start_input_backend();
   //sss_handle->list_devices();
   std::this_thread::sleep_for(std::chrono::seconds(8));
