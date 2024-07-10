@@ -48,52 +48,35 @@ public:
     this->out_device = "default";
   }
 
-  /*
-  void async_callback(snd_async_handler_t *handler) {
-      sss_backend->mixer->sample_output_nodes();
-      snd_pcm_t *pcm_handle = snd_async_handler_get_pcm(handler);
-      AlsaBackend* data =
-  (AlsaBackend*)snd_async_handler_get_callback_private(handler); auto avail =
-  snd_pcm_avail_update(pcm_handle); float* buffer = new float[avail];
-      sss_backend->get(avail, &buffer);
-      while (avail >= period_size) {
-          snd_pcm_writei(pcm_handle, buffer, period_size);
-          avail = snd_pcm_avail_update(pcm_handle);
-      }
-  }
-  */
-
   // creates a new backend
-  AlsaInputBackend *init_alsa_in(std::string out_device = "plughw:0,0") {
+  snd_pcm_t *init_alsa_in(std::string out_device = "plughw:0,0") {
     std::cout << out_device << std::endl;
     int err;
-    this->handle = NULL;
-    err = snd_pcm_open(&this->handle, out_device.c_str(),
-                       SND_PCM_STREAM_CAPTURE, 0);
+    snd_pcm_t *cur_handle = nullptr;
+    err = snd_pcm_open(&cur_handle, out_device.c_str(), SND_PCM_STREAM_CAPTURE,
+                       0);
 
     if (err < 0) {
       std::cout << "err on pcm open\n";
       EXIT_FAILURE;
     }
 
-    this->device_id = out_device;
     // setup hw_params
     snd_pcm_hw_params_t *hw_params;
     snd_pcm_hw_params_malloc(&hw_params);
     this->format = SND_PCM_FORMAT_FLOAT_LE;
 
-    if (set_hw_params(this->handle, hw_params, SND_PCM_ACCESS_RW_INTERLEAVED) <
-        0)
+    if (set_hw_params(cur_handle, hw_params, SND_PCM_ACCESS_RW_INTERLEAVED) < 0)
       std::cout << "err on hw params\n";
 
     snd_pcm_sw_params_t *sw_params;
     snd_pcm_sw_params_malloc(&sw_params);
 
-    if (set_sw_params(this->handle, sw_params) < 0)
+    if (set_sw_params(cur_handle, sw_params) < 0)
       std::cout << "err on sw params\n";
 
-    std::cout << "alsa setup!\n";
-    return this;
+    std::cout << "alsa input setup!\n";
+    return cur_handle;
   }
 
   int set_hw_params(snd_pcm_t *handle, snd_pcm_hw_params_t *params,
@@ -258,5 +241,3 @@ public:
     return err;
   }
 };
-
-

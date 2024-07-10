@@ -96,59 +96,8 @@ private:
   std::size_t num_nodes{0};
 };
 
-class spinlock {
-  std::atomic<bool> lock_ = {0};
-
-  void lock() noexcept {
-    for (;;) {
-      // Optimistically assume the lock is free on the first try
-      if (!lock_.exchange(true, std::memory_order_acquire)) {
-        return;
-      }
-      // Wait for lock to be released without generating cache misses
-      while (lock_.load(std::memory_order_relaxed)) {
-        // Issue X86 PAUSE or ARM YIELD instruction to reduce contention between
-        // hyper-threads
-        // __builtin_ia32_pause();
-        __asm__ volatile("yield" ::: "memory");
-      }
-    }
-  }
-
-  bool try_lock() noexcept {
-    // First do a relaxed load to check if lock is free in order to prevent
-    // unnecessary cache misses if someone does while(!try_lock())
-    return !lock_.load(std::memory_order_relaxed) &&
-           !lock_.exchange(true, std::memory_order_acquire);
-  }
-
-  void unlock() noexcept { lock_.store(false, std::memory_order_release); }
-};
-
 class SSS_ThreadPool {
 public:
-  // using fn_type = std::function<void()>;
-  /*
-  void start_threads(uint32_t n_threads = std::thread::hardware_concurrency()) {
-
-    running.store(true, std::memory_order_release);
-    for (std::size_t i = 0; i < n_threads; ++i) {
-      avail_threads.emplace_back([this, i] {
-        // fn_type cur_task;
-        if (i >= nodes_.size())
-          return;
-        // cur_task = tasks[i];
-        for (;;) {
-          // eval_node(i);
-          //  std::cout << i << std::endl;
-          // sem.acquire();
-          //  cur_task();
-        }
-      });
-    }
-  }
-  */
-
   SSS_ThreadPool(std::size_t n_out_threads, SSS_NodeECS<MAX_NODES> *ecs,
                  SSS_Msg_Queue *msg_queue)
       : n_out_threads(n_out_threads) {

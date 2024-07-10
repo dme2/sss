@@ -228,30 +228,6 @@ public:
     // printf("Channels Per Frame: %u\n", fmt.mChannelsPerFrame);
     // printf("Bits Per Channel: %u\n", fmt.mBitsPerChannel);
 
-    /*
-    AudioComponent comp;
-    AudioComponentDescription desc;
-
-    desc.componentType = kAudioUnitType_Output;
-    desc.componentSubType = kAudioUnitSubType_DefaultOutput;
-    desc.componentManufacturer = kAudioUnitManufacturer_Apple;
-    desc.componentFlags = 0;
-    desc.componentFlagsMask = 0;
-    comp = AudioComponentFindNext(0, &desc);
-    if (!comp)
-      return false;
-
-    res = AudioComponentInstanceNew(comp, &audio_unit);
-    if (res != noErr) {
-      return false;
-    }
-    res = AudioUnitInitialize(audio_unit);
-    if (res != noErr) {
-      return false;
-    }
-    hardware_latency = get_hardware_latency();
-    */
-
     return true;
   }
 

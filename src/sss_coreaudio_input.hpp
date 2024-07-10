@@ -83,10 +83,6 @@ public:
     }
   }
 
-  // void push_node(NodeType nt, fn_type fn, void *fn_data) {
-  //  this->backend->mixer->new_node(OUTPUT, fn, channels, fn_data);
-  // }
-
   static OSStatus IOProc(AudioDeviceID inDevice, const AudioTimeStamp *inNow,
                          const AudioBufferList *inInputData,
                          const AudioTimeStamp *inInputTime,
@@ -241,32 +237,16 @@ public:
     }
 
     // Print the format details
-    printf("Sample Rate: %f\n", fmt.mSampleRate);
-    printf("Format ID: %u\n", fmt.mFormatID);
-    printf("Format Flags: %u\n", fmt.mFormatFlags);
-    printf("Bytes Per Packet: %u\n", fmt.mBytesPerPacket);
-    printf("Frames Per Packet: %u\n", fmt.mFramesPerPacket);
-    printf("Bytes Per Frame: %u\n", fmt.mBytesPerFrame);
-    printf("Channels Per Frame: %u\n", fmt.mChannelsPerFrame);
-    printf("Bits Per Channel: %u\n", fmt.mBitsPerChannel);
+    // printf("Sample Rate: %f\n", fmt.mSampleRate);
+    // printf("Format ID: %u\n", fmt.mFormatID);
+    // printf("Format Flags: %u\n", fmt.mFormatFlags);
+    // printf("Bytes Per Packet: %u\n", fmt.mBytesPerPacket);
+    // printf("Frames Per Packet: %u\n", fmt.mFramesPerPacket);
+    // printf("Bytes Per Frame: %u\n", fmt.mBytesPerFrame);
+    // printf("Channels Per Frame: %u\n", fmt.mChannelsPerFrame);
+    // printf("Bits Per Channel: %u\n", fmt.mBitsPerChannel);
 
     return true;
-  }
-
-  static OSStatus read_callback(void *user_data, AudioUnitRenderActionFlags *,
-                                const AudioTimeStamp *output_time_stamp, UInt32,
-                                UInt32 n_frames, AudioBufferList *io_data) {
-    if (!user_data) {
-      std::cout << "invalid user data\n";
-      return -1;
-    }
-    auto ca_data = (CoreAudioInputBackend *)user_data;
-    // std::cout << "starting sampling\n";
-    // ca_data->backend->mixer->sample_output_nodes();
-    // std::cout << "calling render\n";
-    // ca_data->render(n_frames, io_data, output_time_stamp);
-    std::cout << "READ \n";
-    return noErr;
   }
 
   double get_hardware_latency() {
@@ -318,45 +298,6 @@ public:
                                               input_format.mSampleRate);
 
     return (delay_frames + hardware_latency);
-  }
-
-  bool configure_input(int buffer_size) {
-    AURenderCallbackStruct input;
-    input.inputProc = read_callback;
-    input.inputProcRefCon = this;
-    OSStatus result = AudioUnitSetProperty(
-        input_audio_unit, kAudioOutputUnitProperty_SetInputCallback,
-        kAudioUnitScope_Output, 0, &input, sizeof(input));
-    if (result != noErr) {
-      std::cout << "AudioUnitSetProperty(kAudioUnitProperty_SetRenderCallback) "
-                   "failed.";
-      return false;
-    }
-    std::cout << "read callback setup\n";
-
-    result = AudioUnitSetProperty(
-        input_audio_unit, kAudioUnitProperty_StreamFormat,
-        kAudioUnitScope_Output, 1, &input_format, sizeof(input_format));
-
-    if (result != noErr) {
-      std::cout
-          << "AudioUnitSetProperty(kAudioUnitProperty_StreamFormat failed."
-          << result << "\n";
-      return false;
-    }
-
-    result = AudioUnitSetProperty(
-        input_audio_unit, kAudioDevicePropertyBufferFrameSize,
-        kAudioUnitScope_Output, 1, &buffer_size, sizeof(buffer_size));
-    if (result != noErr) {
-      std::cout << "AudioUnitSetProperty(kAudioDevicePropertyBufferFrameSize) "
-                   "failed.";
-      return false;
-    }
-
-    std::cout << "INPUT CONFIGURED!\n";
-
-    return true;
   }
 
   void start_input() {

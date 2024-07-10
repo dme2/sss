@@ -20,8 +20,6 @@ enum NodeType { OUTPUT, INPUT, FILE_OUT, FILE_INPUT };
 
 #define MAX_NODES 100
 
-// TODO:
-// can node functions be coroutines? (i.e. generators)
 template <typename T> class SSS_Node {
 public:
   using fn_type = std::function<std::size_t(SSS_Node *, std::size_t)>;
@@ -35,10 +33,11 @@ public:
   NodeType nt;
   int channels;
   std::string device_id;
-  std::string node_id;
+  std::string node_id{"node"};
   SSS_File *file;
   float *temp_buffer;
   std::function<void(SSS_Node<T>)> input_fn;
+
   // does this node produce output that needs to be sampled
   // by the mixer?
   // or should its output be sent to another node
@@ -68,6 +67,20 @@ public:
   }
 
   SSS_Node(NodeType type, fn_type fn, int ch, std::size_t s,
+           std::string node_id, std::string id)
+      : nt(type), channels(ch), buff_size(s * 2), device_id(id),
+        node_id(node_id) {
+    this->fun = fn;
+    node_buffer = new SSS_Buffer<T>(s * 4);
+    node_queue = new SSS_Fifo<T>(s * 4);
+    node_buffer_fifo = new SSS_Fifo<std::vector<T>>(32);
+    node_input_buffer_fifo = new SSS_Fifo<T *>(32);
+
+    for (std::size_t i = 0; i < s * 4; i++)
+      node_queue->enqueue(0);
+  }
+
+  SSS_Node(NodeType type, fn_type fn, int ch, std::size_t s,
            std::string node_id, std::string device_id, void *fn_data)
       : nt(type), channels(ch), buff_size(s), node_id(node_id),
         device_id(device_id), fn_data(fn_data) {
@@ -81,9 +94,8 @@ public:
       node_queue->enqueue(0);
   }
 
-  // TODO: fix id
-  SSS_Node(NodeType type, fn_type fn, int ch, std::size_t s, std::string id,
-           std::string file_path)
+  SSS_Node(NodeType type, fn_type fn, int ch, std::size_t s,
+           std::string node_id, std::string id, std::string file_path)
       : nt(type), channels(ch), buff_size(s), device_id(id) {
     this->fun = fn;
     node_buffer = new SSS_Buffer<T>(s);

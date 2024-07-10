@@ -12,26 +12,22 @@
 #include <set>
 
 #if SSS_HAVE_ALSA
-void pcm_write_cb(AlsaBackend *alsa_backend) {
+void pcm_write_cb(AlsaBackend *alsa_backend, snd_pcm_t *handle = nullptr) {
   auto sss_backend = alsa_backend->sss_backend;
   auto buff_size = alsa_backend->period_size;
   float *buffer = new float[buff_size];
 
   while (1) {
-    // auto avail = snd_pcm_avail_update(alsa_backend->handle);
-    // if (avail>0) {
     sss_backend->stage_out_nodes(alsa_backend->device_id, buff_size / 2);
     sss_backend->mixer->tick_mixer();
     sss_backend->get(buff_size / 2, &buffer, alsa_backend->device_id);
 
     auto res = snd_pcm_writei(alsa_backend->handle, buffer,
                               (snd_pcm_uframes_t)buff_size / 2);
-
-    //}
   }
 }
 
-void pcm_read_cb(AlsaInputBackend *alsa_backend) {
+void pcm_read_cb(AlsaInputBackend *alsa_backend, snd_pcm_t *handle = nullptr) {
   auto sss_backend = alsa_backend->sss_backend;
   auto buff_size = alsa_backend->period_size;
   float *buffer = new float[buff_size];
@@ -68,6 +64,10 @@ public:
 #if SSS_HAVE_ALSA
   AlsaBackend *alsa_backend;
   AlsaInputBackend *alsa_input_backend;
+
+  std::vector<snd_pcm_t *> input_handles;
+  std::vector<snd_pcm_t *> output_handles;
+
 #endif
 
   void push_node(NodeType nt, fn_type fn, void *fn_data,
@@ -89,10 +89,14 @@ public:
         ca_input_backend->ca_open_input();
 #endif
 #if SSS_HAVE_ALSA
-      if (node->nt != FILE_INPUT)
-        alsa_backend->init_alsa_out(node->device_id);
-      else
-        alsa_input_backend->init_alsa_in(node->device_id);
+      sss_pcm_t *pcm_handle;
+      if (node->nt != FILE_INPUT) {
+        pcm_handle = alsa_backend->init_alsa_out(node->device_id);
+        output_handles.push_back(pcm_handle);
+      } else {
+        pcm_handle = alsa_input_backend->init_alsa_in(node->device_id);
+        input_handles.push_back(pcm_handle);
+      }
 #endif
       open_devices.insert(node->device_id);
     }

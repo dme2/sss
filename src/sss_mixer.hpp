@@ -12,11 +12,11 @@
 #include <unordered_map>
 #include <vector>
 
-// N.B. FILE_OUT = reading + playing an audio file
-//      FILE_IN  = write audio to a file
+// FILE_OUT = reading + playing an audio file
+// FILE_IN  = write audio to a file
 // enum NodeType { OUTPUT, INPUT, FILE_OUT, FILE_INPUT };
 
-/* There are really only two important graph structures for the audio nodes
+/*TODO There are really only two important graph structures for the audio nodes
  *   1. sequential. i.e. one must be processed before another
  *        (can be represented as a linked list)
  *
@@ -31,57 +31,6 @@
  * independent we should
  *
  */
-
-// struct NodeLists { SSS_Node* next;  }
-
-// TODO:
-// can node functions be coroutines? (i.e. generators)
-/*
-template <typename T> class SSS_Node {
-public:
-  using fn_type = std::function<std::size_t(SSS_Node *, std::size_t)>;
-  std::size_t buff_size;
-  SSS_Buffer<T> *node_buffer;
-  SSS_Fifo<T> *node_queue;
-  void *fn_data;
-  fn_type fun;
-  NodeType nt;
-  int channels;
-  std::string device_id;
-  SSS_File *file;
-  float *temp_buffer;
-  std::function<void(SSS_Node<T>)> input_fn;
-
-  // for NodeLists
-  SSS_Node<T> *next;
-
-  void run_fn() { fun(this, buff_size); }
-
-  SSS_Node(NodeType type, fn_type fn, int ch, std::size_t s, std::string id)
-      : nt(type), channels(ch), buff_size(s), device_id(id) {
-    this->fun = fn;
-    node_buffer = new SSS_Buffer<T>(s * 4);
-    node_queue = new SSS_Fifo<T>(s * 4);
-  }
-
-  SSS_Node(NodeType type, fn_type fn, int ch, std::size_t s, std::string id,
-           std::string file_path)
-      : nt(type), channels(ch), buff_size(s), device_id(id) {
-    this->fun = fn;
-    node_buffer = new SSS_Buffer<T>(s);
-    node_queue = new SSS_Fifo<T>(s * 2);
-    if (type == FILE_INPUT)
-      file = new SSS_File(file_path, true);
-    else
-      file = new SSS_File(file_path);
-  }
-
-  SSS_Node(NodeType type, std::size_t s) : nt(type) {
-    node_buffer = new SSS_Buffer<T>(s);
-    node_queue = new SSS_Fifo<T>(s * 2);
-  }
-};
-*/
 
 template <typename T> class SSS_Mixer {
 public:
@@ -111,8 +60,6 @@ public:
 
   SSS_NodeECS<MAX_NODES> node_ecs;
 
-  // TODO: list of indices should be laid out as:
-  //  output_map["output_device"] = std::vector<int> indices
   std::vector<int> in_node_ecs_idx;
   size_t num_out_idx;
   size_t num_in_idx;
@@ -133,28 +80,10 @@ public:
     msg_queue = new SSS_Msg_Queue();
 
     if (multithread) {
-      std::cout << "multithreaded!\n";
       thread_pool = new SSS_ThreadPool(mt_output, &node_ecs, msg_queue);
       thread_pool->node_ecs_ = &node_ecs;
     }
   }
-
-  /*
-    void register_node(SSS_Node<T> *node) {
-      if (node->nt == OUTPUT || node->nt == FILE_OUT) {
-        // output_nodes.push_back(node);
-        output_node_list->add_node(node);
-        if (run_multithreaded) {
-          thread_pool->register_out_thread(node);
-        }
-      } else {
-        input_node_map[79] = node;
-        input_node_list->add_node(node);
-        if (run_multithreaded)
-          thread_pool->register_in_thread(node);
-      }
-    }
-  */
 
   size_t register_node_ecs(SSS_Node<T> *node) {
     std::optional<int> res = node_ecs.add_node(node);
@@ -162,15 +91,13 @@ public:
       return -1;
     if (run_multithreaded) {
       if (node->nt == FILE_INPUT) {
-        input_node_map[node->device_id] = node; // TODO
-        // thread_pool->register_in_thread_ecs(res.value());
+        input_node_map[node->device_id] = node;
         this->in_node_ecs_idx.push_back(res.value());
         num_in_idx += 1;
       } else {
-        // thread_pool->register_out_thread_ecs(res.value());
         if (!mixer_buffers.contains(node->device_id)) {
           mixer_buffers[node->device_id] =
-              new SSS_Buffer<T>(5000); // TODO: this->buff_size
+              new SSS_Buffer<T>(5000); // TODO: this->buff_size ?
         }
         this->output_node_map[node->device_id].push_back(res.value());
         this->output_node_idx_count[node->device_id] += 1;
@@ -178,7 +105,7 @@ public:
       }
     } else {
       if (node->nt == FILE_INPUT) {
-        input_node_map[node->device_id] = node; // TODO
+        input_node_map[node->device_id] = node;
         this->in_node_ecs_idx.push_back(res.value());
         num_in_idx += 1;
       } else {
@@ -193,53 +120,6 @@ public:
     }
     return res.value();
   }
-
-  void new_node(NodeType nt, fn_type fn, int ch, void *fn_data,
-                std::string device_id = "", std::string file_path = "") {
-    SSS_Node<T> *node = nullptr;
-    if ((nt == FILE_OUT || nt == FILE_INPUT) && file_path != "") {
-      node = new SSS_Node<T>(nt, fn, ch, buff_size, device_id, file_path);
-    } else {
-      node = new SSS_Node<T>(nt, fn, ch, buff_size, device_id);
-    }
-
-    node->fn_data = fn_data;
-    node_ecs.add_node(node);
-    if ((nt != FILE_OUT && nt != FILE_INPUT) && run_multithreaded) {
-      if (node->next != nullptr) { // i.e. a sequential node
-        auto cur_node = node;
-        while (cur_node != nullptr) {
-          auto cur_node = node->next;
-        }
-      } else {
-        thread_pool->push_node_tp(node->fun, node, node->buff_size);
-      }
-    }
-
-    if (nt == INPUT || nt == FILE_INPUT)
-      input_nodes.push_back(node);
-    else
-      output_nodes.push_back(node);
-  }
-
-  void remove_node_ecs(size_t idx) {}
-
-  void pause_node_ecs(size_t idx) {
-    auto n = node_ecs.node_ecs[idx];
-    // n->pause_node;
-  }
-
-  /*
-  void sample_output_nodes() {
-    if (run_multithreaded) {
-      thread_pool->signal_threads(device_id);
-    } else {
-      // TODO:
-      // sampling should take into account sequential nodes
-      output_node_list->traverse_list_and_run();
-    }
-  }
-  */
 
   bool pop_and_run_node() {
     auto msg = msg_queue->pop_msg();
@@ -261,7 +141,6 @@ public:
     }
   }
 
-  // TODO: pass device str
   void sample_output_nodes_ecs() {
     if (run_multithreaded) {
       thread_pool->signal_threads();

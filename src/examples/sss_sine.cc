@@ -73,13 +73,12 @@ int main() {
   fn_d3->pitch = 329.628;
 
   auto node1 = new SSS_Node<float>(OUTPUT, fn, 2, 1024, "A", "73", fn_d1);
-   auto node2 = new SSS_Node<float>(OUTPUT, fn, 2, 1024, "C#", "73",
-   fn_d2);
-    auto node3 = new SSS_Node<float>(OUTPUT, fn, 2, 1024, "E", "73", fn_d3);
+  auto node2 = new SSS_Node<float>(OUTPUT, fn, 2, 1024, "C#", "73", fn_d2);
+  auto node3 = new SSS_Node<float>(OUTPUT, fn, 2, 1024, "E", "73", fn_d3);
 
   sss_handle->register_mixer_node_ecs(node1);
   sss_handle->register_mixer_node_ecs(node2);
-   sss_handle->register_mixer_node_ecs(node3);
+  sss_handle->register_mixer_node_ecs(node3);
 
   // warmup the nodes
   for (int i = 0; i < 10; i++) {
@@ -88,8 +87,7 @@ int main() {
     // node3->run_fn(1024);
   }
 
-  sss_handle->init_output_backend();
-  // sss_handle->list_devices();
+  //  sss_handle->list_devices();
   sss_handle->start_output_backend();
   std::this_thread::sleep_for(std::chrono::seconds(5));
   sss_handle->pause_output_backend();

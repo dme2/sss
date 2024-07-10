@@ -53,118 +53,36 @@ public:
     this->out_device = "default";
   }
 
-  /*
-  void async_callback(snd_async_handler_t *handler) {
-      sss_backend->mixer->sample_output_nodes();
-      snd_pcm_t *pcm_handle = snd_async_handler_get_pcm(handler);
-      AlsaBackend* data =
-  (AlsaBackend*)snd_async_handler_get_callback_private(handler); auto avail =
-  snd_pcm_avail_update(pcm_handle); float* buffer = new float[avail];
-      sss_backend->get(avail, &buffer);
-      while (avail >= period_size) {
-          snd_pcm_writei(pcm_handle, buffer, period_size);
-          avail = snd_pcm_avail_update(pcm_handle);
-      }
-  }
-  */
-
-  // creates a new backend
-  AlsaBackend *init_alsa_out(std::string out_device = "plughw:0,0") {
+  snd_pcm_t *init_alsa_out(std::string out_device = "plughw:0,0") {
     std::cout << out_device << std::endl;
+    snd_pcm_t *cur_handle;
     int err;
-    this->handle = NULL;
-    err = snd_pcm_open(&this->handle, out_device.c_str(),
-                       SND_PCM_STREAM_PLAYBACK, 0);
+
+    err = snd_pcm_open(cur_handle, out_device.c_str(), SND_PCM_STREAM_PLAYBACK,
+                       0);
 
     if (err < 0) {
       std::cout << "err on pcm open\n";
       EXIT_FAILURE;
     }
 
-    this->device_id = out_device;
-    // setup hw_params
+    // this->device_id = out_device;
+    //  setup hw_params
     snd_pcm_hw_params_t *hw_params;
     snd_pcm_hw_params_malloc(&hw_params);
     this->format = SND_PCM_FORMAT_FLOAT_LE;
 
-    if (set_hw_params(this->handle, hw_params, SND_PCM_ACCESS_RW_INTERLEAVED) <
-        0)
+    if (set_hw_params(cur_handle, hw_params, SND_PCM_ACCESS_RW_INTERLEAVED) < 0)
       std::cout << "err on hw params\n";
-
-    /*
-if ((err = snd_pcm_hw_params_any(this->handle, hw_params)) < 0) {
-  EXIT_FAILURE;
-}
-
-bool is_interleaved = true;
-
-if (snd_pcm_hw_params_set_access(this->handle, hw_params,
-                                 SND_PCM_ACCESS_RW_INTERLEAVED) >= 0)
-  is_interleaved = true;
-
-snd_pcm_hw_params_set_format(this->handle, hw_params, this->format);
-
-unsigned int periods = 2; // ?
-unsigned int sr = (unsigned int)this->sample_rate;
-
-int dir = 0; // ?
-snd_pcm_uframes_t samples_per_period = (snd_pcm_uframes_t)512;
-
-snd_pcm_hw_params_set_rate_near(this->handle, hw_params, &sr, nullptr);
-snd_pcm_hw_params_set_channels(this->handle, hw_params,
-                               (unsigned int)this->channel_count);
-
-    unsigned int buffer_time = 500000;
-    snd_pcm_hw_params_set_buffer_time_near(this->handle, hw_params,
-&buffer_time, nullptr);
-
-
-    snd_pcm_uframes_t size;
-    snd_pcm_hw_params_get_buffer_size(hw_params, &size);
-
-//snd_pcm_hw_params_set_periods_near(this->handle, hw_params, &periods, &dir);
-//snd_pcm_hw_params_set_period_size_near(this->handle, hw_params,
- //                                      &samples_per_period, &dir);
-
-snd_pcm_uframes_t frames = 0;
-int latency;
-
-snd_pcm_hw_params_get_period_size(hw_params, &frames, &dir);
-//snd_pcm_hw_params_get_periods(hw_params, &periods, &dir);
-
-snd_pcm_hw_params(this->handle, hw_params);
-    std::cout << frames << " " << frame_count << " " <<periods << std::endl;
-    this->period_size = frames;
-latency = (int)frames * ((int)periods - 1);
-
-snd_pcm_sw_params_t *sw_params;
-snd_pcm_sw_params_malloc(&sw_params);
-snd_pcm_uframes_t boundary;
-
-snd_pcm_sw_params_current(this->handle, sw_params);
-snd_pcm_sw_params_get_boundary(sw_params, &boundary);
-snd_pcm_sw_params_set_silence_threshold(this->handle, sw_params, 0);
-snd_pcm_sw_params_set_silence_size(this->handle, sw_params, boundary);
-snd_pcm_sw_params_set_start_threshold(this->handle, sw_params,
-                                      samples_per_period);
-snd_pcm_sw_params_set_stop_threshold(this->handle, sw_params, boundary);
-snd_pcm_sw_params(this->handle, sw_params);
-
-//snd_async_handler_t *callback_handler;
-
-//snd_async_add_pcm_handler(&callback_handler, this->handle, async_callback,
- //                         this);
-
-*/
 
     snd_pcm_sw_params_t *sw_params;
     snd_pcm_sw_params_malloc(&sw_params);
 
-    if (set_sw_params(this->handle, sw_params) < 0)
+    if (set_sw_params(cur_handle, sw_params) < 0)
       std::cout << "err on sw params\n";
 
     std::cout << "alsa setup!\n";
-    return this;
+    return cur_handle;
   }
 
   int set_hw_params(snd_pcm_t *handle, snd_pcm_hw_params_t *params,
@@ -329,21 +247,3 @@ snd_pcm_sw_params(this->handle, sw_params);
     return err;
   }
 };
-
-void async_callback(snd_async_handler_t *handler) {
-  std::cout << "cb\n";
-  AlsaBackend *data =
-      (AlsaBackend *)snd_async_handler_get_callback_private(handler);
-  snd_pcm_t *pcm_handle = snd_async_handler_get_pcm(handler);
-  auto avail = snd_pcm_avail_update(pcm_handle) / 8;
-  auto sss_backend = data->sss_backend;
-  auto period_size = data->period_size;
-  while (avail >= period_size) {
-    float *buffer = new float[avail * 2];
-    sss_backend->stage_out_nodes(data->device_id, avail);
-    sss_backend->mixer->sample_output_nodes_ecs();
-    sss_backend->get(avail, &buffer, data->device_id);
-    snd_pcm_writei(pcm_handle, buffer, period_size);
-    avail = snd_pcm_avail_update(pcm_handle) / 8;
-  }
-}
