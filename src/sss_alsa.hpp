@@ -55,10 +55,10 @@ public:
 
   snd_pcm_t *init_alsa_out(std::string out_device = "plughw:0,0") {
     std::cout << out_device << std::endl;
-    snd_pcm_t *cur_handle;
+    snd_pcm_t *cur_handle = nullptr;
     int err;
 
-    err = snd_pcm_open(cur_handle, out_device.c_str(), SND_PCM_STREAM_PLAYBACK,
+    err = snd_pcm_open(&cur_handle, out_device.c_str(), SND_PCM_STREAM_PLAYBACK,
                        0);
 
     if (err < 0) {
@@ -224,6 +224,14 @@ public:
 
   void start_alsa_output() {
     // snd_pcm_start(this->handle);
+  }
+
+  void alsa_pause(snd_pcm_t* handle) {
+	snd_pcm_pause(handle, 1);
+  }
+
+  void alsa_resume(snd_pcm_t* handle) {
+	snd_pcm_pause(handle, 0);
   }
 
   int xrun_recovery(snd_pcm_t *handle, int err) {

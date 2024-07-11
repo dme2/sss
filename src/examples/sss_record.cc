@@ -5,6 +5,12 @@
 
 /* This is an example program that records using the default input device
  */
+#if SSS_HAVE_COREAUDIO
+std::string device_id = "73";
+#endif
+#if SSS_HAVE_ALSA
+std::string device_id = "plughw:0,0";
+#endif
 
 void mixer_fn(SSS_Mixer<float> *mixer, std::vector<float> *buff,
               std::size_t n_samples) {
@@ -35,7 +41,7 @@ int main() {
 
   fn_type i_fn = input_fn;
   auto node1 =
-      new SSS_Node<float>(FILE_INPUT, i_fn, 2, 1024, "plughw:0,0", "recording.raw");
+      new SSS_Node<float>(FILE_INPUT, i_fn, 2, 1024, device_id, "recording.raw");
 
   sss_handle->register_mixer_node_ecs(node1);
 

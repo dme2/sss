@@ -220,6 +220,14 @@ public:
     // snd_pcm_start(this->handle);
   }
 
+  void alsa_pause_input(snd_pcm_t* handle) {
+	snd_pcm_pause(handle, 1);
+  }
+
+  void alsa_resume_input(snd_pcm_t* handle) {
+	snd_pcm_pause(handle, 0);
+  }
+
   int xrun_recovery(snd_pcm_t *handle, int err) {
     if (err == -EPIPE) {
       err = snd_pcm_prepare(handle);

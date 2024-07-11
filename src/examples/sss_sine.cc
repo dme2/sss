@@ -1,4 +1,3 @@
-
 #include "../sss.hpp"
 #include <algorithm>
 #include <chrono>
@@ -6,6 +5,14 @@
 /* This is an example program that plays 3 sine waves corresponding
  *  to an AMajor chord
  */
+
+
+#if SSS_HAVE_COREAUDIO
+std::string device_id = "73";
+#endif
+#if SSS_HAVE_ALSA
+std::string device_id = "plughw:0,0";
+#endif
 
 struct fn_data {
   double pitch{440.0};
@@ -72,9 +79,9 @@ int main() {
   fn_d2->pitch = 277.183;
   fn_d3->pitch = 329.628;
 
-  auto node1 = new SSS_Node<float>(OUTPUT, fn, 2, 1024, "A", "73", fn_d1);
-  auto node2 = new SSS_Node<float>(OUTPUT, fn, 2, 1024, "C#", "73", fn_d2);
-  auto node3 = new SSS_Node<float>(OUTPUT, fn, 2, 1024, "E", "73", fn_d3);
+  auto node1 = new SSS_Node<float>(OUTPUT, fn, 2, 1024, "A", device_id, fn_d1);
+  auto node2 = new SSS_Node<float>(OUTPUT, fn, 2, 1024, "C#", device_id, fn_d2);
+  auto node3 = new SSS_Node<float>(OUTPUT, fn, 2, 1024, "E", device_id, fn_d3);
 
   sss_handle->register_mixer_node_ecs(node1);
   sss_handle->register_mixer_node_ecs(node2);
