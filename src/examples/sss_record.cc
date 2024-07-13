@@ -41,7 +41,7 @@ int main() {
 
   fn_type i_fn = input_fn;
   auto node1 =
-      new SSS_Node<float>(FILE_INPUT, i_fn, 2, 1024, device_id, "recording.raw");
+      new SSS_Node<float>(FILE_INPUT, i_fn, 2, 1024,"recording_node", device_id, "recording.raw");
 
   sss_handle->register_mixer_node_ecs(node1);
 

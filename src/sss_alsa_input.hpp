@@ -7,29 +7,13 @@ class AlsaInputBackend;
 
 class AlsaInputBackend {
 public:
-  snd_pcm_t *handle;
-  snd_pcm_chmap_t *chmap;
-  int chmap_size;
-  int channel_count;
-  snd_pcm_uframes_t offset;
-  snd_pcm_access_t access;
-  snd_pcm_uframes_t buffer_frame_size;
-  int sample_buffer_size;
-  int8_t *sample_buffer;
-  // int poll_fd_count;
-  // int poll_fd_count_with_extra;
-  // struct pollfd *poll_fds;
   snd_pcm_uframes_t period_size;
-  int write_frame_count;
   int frame_count; // for output?
-  bool paused;
-  std::string out_device;
-  std::string in_device;
+  bool pause;
   int sample_rate;
   snd_pcm_format_t format;
   double sw_latency;
   int bytes_per_frame;
-  int bytes_per_sample;
   SSS_Backend<float> *sss_backend;
   int resample{1};
   unsigned int buffer_time{500000};
@@ -45,12 +29,10 @@ public:
                    int frame_count)
       : sample_rate(sample_rate), channels(channels), frame_count(frame_count),
         bytes_per_frame(bytes_per_frame) {
-    this->out_device = "default";
   }
 
   // creates a new backend
   snd_pcm_t *init_alsa_in(std::string out_device = "plughw:0,0") {
-    std::cout << out_device << std::endl;
     int err;
     snd_pcm_t *cur_handle = nullptr;
     err = snd_pcm_open(&cur_handle, out_device.c_str(), SND_PCM_STREAM_CAPTURE,

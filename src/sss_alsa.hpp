@@ -1,5 +1,6 @@
 #include <alsa/asoundlib.h>
 #include <alsa/global.h>
+
 #include <cstdlib>
 #include <string>
 // #include "sss_backend.hpp"
@@ -11,25 +12,10 @@ class AlsaBackend;
 void async_callback(snd_async_handler_t *handler);
 
 class AlsaBackend {
-public:
-  snd_pcm_t *handle;
-  snd_pcm_chmap_t *chmap;
-  int chmap_size;
-  int channel_count;
-  snd_pcm_uframes_t offset;
-  snd_pcm_access_t access;
-  snd_pcm_uframes_t buffer_frame_size;
-  int sample_buffer_size;
-  int8_t *sample_buffer;
-  // int poll_fd_count;
-  // int poll_fd_count_with_extra;
-  // struct pollfd *poll_fds;
+ public:
   snd_pcm_uframes_t period_size;
-  int write_frame_count;
-  int frame_count; // for output?
-  bool paused;
+  bool pause;
   std::string out_device;
-  std::string in_device;
   int sample_rate;
   snd_pcm_format_t format;
   double sw_latency;
@@ -48,13 +34,12 @@ public:
 
   AlsaBackend(int sample_rate, int channels, int bytes_per_frame,
               int frame_count)
-      : sample_rate(sample_rate), channels(channels), frame_count(frame_count),
-        bytes_per_frame(bytes_per_frame) {
-    this->out_device = "default";
-  }
+      : sample_rate(sample_rate),
+        channels(channels),
+        period_size(frame_count),
+        bytes_per_frame(bytes_per_frame) {}
 
   snd_pcm_t *init_alsa_out(std::string out_device = "plughw:0,0") {
-    std::cout << out_device << std::endl;
     snd_pcm_t *cur_handle = nullptr;
     int err;
 
@@ -94,9 +79,10 @@ public:
     /* choose all parameters */
     err = snd_pcm_hw_params_any(handle, params);
     if (err < 0) {
-      printf("Broken configuration for playback: no configurations available: "
-             "%s\n",
-             snd_strerror(err));
+      printf(
+          "Broken configuration for playback: no configurations available: "
+          "%s\n",
+          snd_strerror(err));
       return err;
     }
     /* set hardware resampling */
@@ -138,6 +124,8 @@ public:
              err);
       return -EINVAL;
     }
+
+    std::cout << sample_rate << std::endl;
     /* set the buffer time */
     err = snd_pcm_hw_params_set_buffer_time_near(handle, params, &buffer_time,
                                                  &dir);
@@ -167,7 +155,24 @@ public:
       printf("Unable to get period size for playback: %s\n", snd_strerror(err));
       return err;
     }
+
     period_size = size;
+
+    // TODO:  seems like we can't manually set the period size to
+    //	      anything lower than 4800? 2400 causes a ton of underruns
+    //        but 4800 seems like an unnecessarily large buffer
+    //
+    //        maybe try increasing the  sample rate and see what happns?
+    //
+    // err = snd_pcm_hw_params_set_period_size(handle, params, , dir);
+    // if (err < 0) {
+    //       printf("Unable to set period size for playback: %s\n",
+    //       snd_strerror(err));
+    //      return err;
+    //   }
+
+    std::cout << "period size: " << period_size << std::endl;
+
     /* write the parameters to device */
     err = snd_pcm_hw_params(handle, params);
     if (err < 0) {
@@ -226,12 +231,18 @@ public:
     // snd_pcm_start(this->handle);
   }
 
-  void alsa_pause(snd_pcm_t* handle) {
-	snd_pcm_pause(handle, 1);
+  void alsa_pause(snd_pcm_t *handle) {
+    if (!pause) {
+      snd_pcm_pause(handle, 1);
+      pause = true;
+    }
   }
 
-  void alsa_resume(snd_pcm_t* handle) {
-	snd_pcm_pause(handle, 0);
+  void alsa_resume(snd_pcm_t *handle) {
+    if (pause) {
+      snd_pcm_pause(handle, 0);
+      pause = false;
+    }
   }
 
   int xrun_recovery(snd_pcm_t *handle, int err) {
@@ -244,8 +255,7 @@ public:
         while ((err = snd_pcm_resume(handle)) == -EAGAIN) {
           // spin until suspend flag is released
         }
-        if (err < 0)
-          err = snd_pcm_prepare(handle);
+        if (err < 0) err = snd_pcm_prepare(handle);
         if (err >= 0) {
           // underflow callback
           exit(1);
@@ -253,5 +263,63 @@ public:
       }
     }
     return err;
+  }
+
+  void list_devices() {
+    int status;
+    int card = -1;
+    snd_ctl_t *ctl_handle;
+    snd_ctl_card_info_t *card_info;
+    snd_pcm_info_t *pcm_info;
+
+    snd_ctl_card_info_alloca(&card_info);
+    snd_pcm_info_alloca(&pcm_info);
+
+    while (snd_card_next(&card) >= 0 && card >= 0) {
+      char card_name[32];
+      sprintf(card_name, "hw:%d", card);
+
+      status = snd_ctl_open(&ctl_handle, card_name, 0);
+      if (status < 0) {
+        fprintf(stderr, "Error opening control for card %d: %s\n", card,
+                snd_strerror(status));
+        continue;
+      }
+
+      status = snd_ctl_card_info(ctl_handle, card_info);
+      if (status < 0) {
+        fprintf(stderr, "Error getting card info for card %d: %s\n", card,
+                snd_strerror(status));
+        snd_ctl_close(ctl_handle);
+        continue;
+      }
+
+      printf("Card %d: %s [%s]\n", card, snd_ctl_card_info_get_id(card_info),
+             snd_ctl_card_info_get_name(card_info));
+
+      int device = -1;
+      while (snd_ctl_pcm_next_device(ctl_handle, &device) >= 0 && device >= 0) {
+        snd_pcm_info_set_device(pcm_info, device);
+        snd_pcm_info_set_subdevice(pcm_info, 0);
+        snd_pcm_info_set_stream(pcm_info, SND_PCM_STREAM_PLAYBACK);
+
+        status = snd_ctl_pcm_info(ctl_handle, pcm_info);
+        if (status >= 0) {
+          printf("  Playback Device %d: %s [%s]\n", device,
+                 snd_pcm_info_get_id(pcm_info),
+                 snd_pcm_info_get_name(pcm_info));
+        }
+
+        snd_pcm_info_set_stream(pcm_info, SND_PCM_STREAM_CAPTURE);
+        status = snd_ctl_pcm_info(ctl_handle, pcm_info);
+        if (status >= 0) {
+          printf("  Capture Device %d: %s [%s]\n", device,
+                 snd_pcm_info_get_id(pcm_info),
+                 snd_pcm_info_get_name(pcm_info));
+        }
+      }
+
+      snd_ctl_close(ctl_handle);
+    }
   }
 };

@@ -17,30 +17,31 @@ bool alsa_input_want_pause = false;
 std::mutex pause_alsa_output_mutex;
 std::mutex pause_alsa_input_mutex;
 
-void pcm_write_cb(AlsaBackend *alsa_backend, snd_pcm_t *handle) {
+void pcm_write_cb(AlsaBackend *alsa_backend, snd_pcm_t *handle, std::string device) {
   auto sss_backend = alsa_backend->sss_backend;
   auto buff_size = alsa_backend->period_size;
   float *buffer = new float[buff_size];
 
   while (!alsa_output_want_pause) {
-    sss_backend->stage_out_nodes("plughw:0,0", buff_size / 2); // TODO
+    sss_backend->stage_out_nodes(device, buff_size / 2); // TODO get device
     sss_backend->mixer->tick_mixer();
-    sss_backend->get(buff_size / 2, &buffer, "plughw:0,0"); // TODO
+    sss_backend->get(buff_size / 2, &buffer, device); // TODO get device
 
     auto res = snd_pcm_writei(handle, buffer,
                               (snd_pcm_uframes_t)buff_size / 2);
   }
 }
 
-void pcm_read_cb(AlsaInputBackend *alsa_backend, snd_pcm_t *handle) {
+void pcm_read_cb(AlsaInputBackend *alsa_backend, snd_pcm_t *handle, std::string device) {
   auto sss_backend = alsa_backend->sss_backend;
   auto buff_size = alsa_backend->period_size;
   float *buffer = new float[buff_size];
 
+  std::cout << "device : " << device << std::endl;
   while (!alsa_input_want_pause) {
     auto res = snd_pcm_readi(handle, buffer,
                              (snd_pcm_uframes_t)buff_size);
-    sss_backend->stage_in_nodes("plughw:0,0", buff_size, &buffer); // TODO
+    sss_backend->stage_in_nodes(device, buff_size, &buffer); // TODO
     sss_backend->mixer->tick_mixer();
   }
 }
@@ -73,17 +74,8 @@ public:
   std::vector<snd_pcm_t *> input_handles;
   std::vector<snd_pcm_t *> output_handles;
 
+  std::unordered_map<snd_pcm_t *, std::string> handle_device_map;
 #endif
-
-  void push_node(NodeType nt, fn_type fn, void *fn_data,
-                 std::string device_id = "default", std::string fp = "") {
-    this->sss_backend->mixer->new_node(nt, fn, channels, fn_data, device_id,
-                                       fp);
-  }
-
-  void register_mixer_node(SSS_Node<T> *node) {
-    this->sss_backend->mixer->register_node(node);
-  }
 
   void register_mixer_node_ecs(SSS_Node<T> *node) {
     if (!open_devices.contains(node->device_id)) {
@@ -98,9 +90,11 @@ public:
       if (node->nt != FILE_INPUT) {
         pcm_handle = alsa_backend->init_alsa_out(node->device_id);
         output_handles.push_back(pcm_handle);
+		handle_device_map[pcm_handle] = node->device_id;
       } else {
         pcm_handle = alsa_input_backend->init_alsa_in(node->device_id);
         input_handles.push_back(pcm_handle);
+		handle_device_map[pcm_handle] = node->device_id;
       }
 #endif
       open_devices.insert(node->device_id);
@@ -171,7 +165,7 @@ public:
 #if SSS_HAVE_ALSA
     for (auto i : output_handles) {
       //alsa_backend->start_alsa_output(i);
-      std::jthread pcm_thread(pcm_write_cb, this->alsa_backend, i);
+      std::jthread pcm_thread(pcm_write_cb, this->alsa_backend, i, handle_device_map[i]);
       pcm_thread.detach();
     }
 #endif
@@ -183,7 +177,8 @@ public:
 #if SSS_HAVE_ALSA
     for (auto i : input_handles) {
       //alsa_input_backend->start_alsa_input();
-      std::jthread pcm_read_thread(pcm_read_cb, this->alsa_input_backend, i);
+      std::jthread pcm_read_thread(pcm_read_cb, this->alsa_input_backend, i, 
+		handle_device_map[i] );
       pcm_read_thread.detach();
     }
 #endif
@@ -220,6 +215,9 @@ public:
   void list_devices() {
 #if SSS_HAVE_COREAUDIO
     ca_backend->list_devices();
+#endif
+#if SSS_HAVE_ALSA
+	alsa_backend->list_devices();
 #endif
   }
 
