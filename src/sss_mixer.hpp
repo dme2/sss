@@ -30,6 +30,22 @@
  *  should trigger the processing of other nodes) or not. If a node's
  * independent we should
  *
+ * MIDI:
+ *    When MIDI is activated, the mixer should tick() the midi renderer, the
+ *  midi rendere will decide whether it's time to render the midi note or not.
+ * The midi renderer should tick every 8333.33 microseconds. So if we're running
+ * at audio at 48000hz, the mixer is (ideally) ticked 48000 times a second, the
+ * midi renderer will only be ticking every 48000/8333.33 ~ 6 calls to the
+ * mixer.
+ *
+ *  If it's time to render, the midi renderer will handle communicating with the
+ *  assigned node to produce the sound that is then sampled by the mixer
+ *
+ *  TODOS:
+ *   [] build out synthesizer
+ *   [] finish midi renderer implementation
+ *   [] hook up to mixer
+ *   [] SSS_Time (for keeping track of play/rec/midi timing)
  */
 
 template <typename T> class SSS_Mixer {
@@ -49,6 +65,7 @@ public:
 
   std::vector<SSS_Node<T> *> output_nodes;
   std::vector<SSS_Node<T> *> input_nodes;
+  std::vector<SSS_Node<T> *> midi_out_nodes;
   // device_id -> Node
   std::unordered_map<std::string, SSS_Node<T> *> input_node_map;
 
@@ -66,13 +83,17 @@ public:
 
   SSS_Msg_Queue *msg_queue;
 
+  bool midi_on{false};
+  SSS_MIDI *midi_renderer;
+
   // mixer function
   std::function<void(SSS_Mixer<T> *mixer, std::vector<T> *buff,
                      std::size_t n_samples)>
       mixer_fn;
 
-  SSS_Mixer(std::size_t buff_size, bool multithread = false, int mt_output = 0)
-      : buff_size(buff_size), run_multithreaded(multithread) {
+  SSS_Mixer(std::size_t buff_size, bool multithread = false, int mt_output = 0,
+            bool midi = false)
+      : buff_size(buff_size), run_multithreaded(multithread), midi_on(midi) {
     mixer_buffer = new SSS_Buffer<T>(buff_size);
     output_node_list = new SSS_NodeList<T>;
     input_node_list = new SSS_NodeList<T>;
@@ -82,6 +103,10 @@ public:
     if (multithread) {
       thread_pool = new SSS_ThreadPool(mt_output, &node_ecs, msg_queue);
       thread_pool->node_ecs_ = &node_ecs;
+    }
+
+    if (midi_on) {
+      midi_renderer = new SSS_MIDI();
     }
   }
 
@@ -157,6 +182,13 @@ public:
       }
     } */
     }
+  }
+
+  void tick_midi_out() {
+    // TODO:
+    //    check the tick data so we know when to render
+    for (auto n : midi_out_nodes)
+      n->render_midi();
   }
 
   // TODO:

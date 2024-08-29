@@ -1,8 +1,10 @@
 #include "sss_buffer.hpp"
 #include "sss_fifo.hpp"
-#include "sss_file.hpp"
+// #include "sss_file.hpp"
+#include "sss_midi.hpp"
 #include "sss_util.hpp"
 
+#include <CoreFoundation/CoreFoundation.h>
 #include <array>
 #include <cmath>
 #include <cstdlib>
@@ -16,7 +18,7 @@
 
 // N.B. FILE_OUT = reading + playing an audio file
 //      FILE_IN  = write audio to a file
-enum NodeType { OUTPUT, INPUT, FILE_OUT, FILE_INPUT };
+enum NodeType { OUTPUT, INPUT, FILE_OUT, FILE_INPUT, MIDI_IN, MIDI_OUT };
 
 #define MAX_NODES 100
 
@@ -45,7 +47,7 @@ public:
   bool pause{false};
 
   size_t ecs_idx;
-
+  SSS_MIDI *midi_handle;
   std::size_t run_fn(size_t n_samples) { return fun(this, n_samples); }
 
   // for node lists
@@ -115,12 +117,28 @@ public:
     node_buffer_fifo = new SSS_Fifo<std::vector<T>>(16);
   }
 
+  SSS_Node(NodeType type, std::string node_id, std::string device_id,
+           midi_file_data *md = nullptr)
+      : nt(type), node_id(node_id), device_id(device_id) {
+    if (type == MIDI_IN || type == MIDI_OUT) {
+      midi_handle = new SSS_MIDI();
+    }
+  }
+
   void pause_node() {
     if (pause)
       return;
     else
       pause = true;
   }
+
+  // going to need to fix this later, but for now just generate a half seconds
+  // worth of samples
+  // bps = chans * byte_width * rate
+  // = 2 * 2 * 48000 = 192000 bytes
+  // 1 seconds worth of smples is 192000 / 2 = 96000
+  // 96000 / 2 = 48000 samples for half a seconds worth of sample
+  void render_midi_node(size_t n_samples) {}
 };
 
 template <typename T> struct SSS_NodeList {

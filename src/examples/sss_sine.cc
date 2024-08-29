@@ -1,11 +1,11 @@
 #include "../sss.hpp"
+#include "../sss_synth.hpp"
 #include <algorithm>
 #include <chrono>
 
 /* This is an example program that plays 3 sine waves corresponding
  *  to an AMajor chord
  */
-
 
 #if SSS_HAVE_COREAUDIO
 std::string device_id = "73";
@@ -19,6 +19,8 @@ struct fn_data {
   double phase{0.0};
   double volume{0.2};
 };
+
+auto params = new synth_params(2, 440.0, 0.0, 0.2, 48000.0);
 
 std::size_t gen_sine1(SSS_Node<float> *node, std::size_t num_samples) {
   auto sine_data = (fn_data *)node->fn_data;

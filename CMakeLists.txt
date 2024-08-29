@@ -4,7 +4,9 @@ set(CMAKE_MODULE_PATH ${SSS_SOURCE_DIR}/cmake ${CMAKE_MODULE_PATH})
 
 #add_executable(sss src/main.cc)
 add_executable(sss_sine src/examples/sss_sine.cc)
+add_executable(sss_synth src/examples/sss_synth.cc)
 add_executable(sss_record src/examples/sss_record.cc)
+add_executable(sss_midi src/examples/sss_midi.cc)
 
 #set_target_properties(sss PROPERTIES
 #  CXX_STANDARD 20
@@ -18,7 +20,21 @@ set_target_properties(sss_sine PROPERTIES
   CXX_EXTENSIONS OFF
 )
 
+
+set_target_properties(sss_synth PROPERTIES
+  CXX_STANDARD 20
+  CXX_STANDARD_REQUIRED ON
+  CXX_EXTENSIONS OFF
+)
+
+
 set_target_properties(sss_record PROPERTIES
+  CXX_STANDARD 20
+  CXX_STANDARD_REQUIRED ON
+  CXX_EXTENSIONS OFF
+)
+
+set_target_properties(sss_midi PROPERTIES
   CXX_STANDARD 20
   CXX_STANDARD_REQUIRED ON
   CXX_EXTENSIONS OFF
@@ -30,8 +46,8 @@ set(CMAKE_CXX_FLAGS "-g -ggdb")
 include(CheckIncludeFileCXX)
 
 # Set options
-option(ENABLE_ALSA "Enable ALSA backend" ON)
-option(ENABLE_COREAUDIO "Enable CoreAudio backend" OFF)
+option(ENABLE_ALSA "Enable ALSA backend" OFF)
+option(ENABLE_COREAUDIO "Enable CoreAudio backend" ON)
 
 if(ENABLE_ALSA)
     find_package(ALSA REQUIRED)
@@ -42,7 +58,9 @@ if(ENABLE_ALSA)
         #target_compile_definitions(sss PRIVATE SSS_HAVE_ALSA=1)
         #target_link_libraries(sss PRIVATE ${ALSA_LIBRARIES})
         target_link_libraries(sss_sine PRIVATE ${ALSA_LIBRARIES})
+        target_link_libraries(sss_synth PRIVATE ${ALSA_LIBRARIES})
         target_link_libraries(sss_record PRIVATE ${ALSA_LIBRARIES})
+        target_link_libraries(sss_midi PRIVATE ${ALSA_LIBRARIES})
     else()
         set(STATUS_ALSA "not found")
         set(SSS_HAVE_ALSA false)
@@ -69,7 +87,9 @@ if(ENABLE_COREAUDIO)
             #target_compile_definitions(sss PRIVATE SSS_HAVE_COREAUDIO=1)
             #target_link_libraries(sss PRIVATE ${CORE_AUDIO_LIBRARY} ${COREFOUNDATION_LIBRARY} ${AUDIO_UNIT_LIBRARY} ${AVFOUNDATION_LIBRARY})
             target_link_libraries(sss_sine PRIVATE ${CORE_AUDIO_LIBRARY} ${COREFOUNDATION_LIBRARY} ${AUDIO_UNIT_LIBRARY} ${AVFOUNDATION_LIBRARY})
+            target_link_libraries(sss_synth PRIVATE ${CORE_AUDIO_LIBRARY} ${COREFOUNDATION_LIBRARY} ${AUDIO_UNIT_LIBRARY} ${AVFOUNDATION_LIBRARY})
             target_link_libraries(sss_record PRIVATE ${CORE_AUDIO_LIBRARY} ${COREFOUNDATION_LIBRARY} ${AUDIO_UNIT_LIBRARY} ${AVFOUNDATION_LIBRARY})
+            target_link_libraries(sss_midi PRIVATE ${CORE_AUDIO_LIBRARY} ${COREFOUNDATION_LIBRARY} ${AUDIO_UNIT_LIBRARY} ${AVFOUNDATION_LIBRARY})
         endif()
     else()
         set(STATUS_COREAUDIO "not found")
