@@ -1,10 +1,10 @@
 #include "sss_buffer.hpp"
 #include "sss_fifo.hpp"
-// #include "sss_file.hpp"
 #include "sss_midi.hpp"
+#include "sss_synth.hpp"
 #include "sss_util.hpp"
 
-#include <CoreFoundation/CoreFoundation.h>
+#include <CoreFoundation/CoreFoundation.h> // ??
 #include <array>
 #include <cmath>
 #include <cstdlib>
@@ -48,6 +48,12 @@ public:
 
   size_t ecs_idx;
   SSS_MIDI *midi_handle;
+  double cur_midi_time{0.0};
+  SSS_Synth<T> *midi_synth;
+  synth_params *midi_synth_params;
+  std::unordered_map<float, std::vector<midi_message>> midi_time_map;
+  size_t msg_index{0};
+
   std::size_t run_fn(size_t n_samples) { return fun(this, n_samples); }
 
   // for node lists
@@ -122,6 +128,9 @@ public:
       : nt(type), node_id(node_id), device_id(device_id) {
     if (type == MIDI_IN || type == MIDI_OUT) {
       midi_handle = new SSS_MIDI();
+      setup_midi_file(md);
+      midi_synth_params = new synth_params(2, 440.0, 0.0, 0.2, 48000.0);
+      this->node_buffer_fifo = new SSS_Fifo<std::vector<T>>(16);
     }
   }
 
@@ -132,13 +141,44 @@ public:
       pause = true;
   }
 
-  // going to need to fix this later, but for now just generate a half seconds
-  // worth of samples
-  // bps = chans * byte_width * rate
-  // = 2 * 2 * 48000 = 192000 bytes
-  // 1 seconds worth of smples is 192000 / 2 = 96000
-  // 96000 / 2 = 48000 samples for half a seconds worth of sample
-  void render_midi_node(size_t n_samples) {}
+  // sets up the midi_time_map
+  void setup_midi_file(midi_file_data *md) {
+    if (md->tick_times.size() != md->messages.size()) {
+      std::cout << "MIDI file size error!\n";
+      return;
+    }
+    for (int i = 0; i < md->tick_times.size(); i++) {
+      this->midi_time_map[md->tick_times[i]].push_back(md->messages[i]);
+    }
+  }
+
+  void setup_midi_synth(SSS_Synth<T> *synth) { this->midi_synth = synth; }
+
+  size_t render_midi_file(size_t n_samples) {
+    if (this->midi_synth == nullptr ||
+        this->msg_index == this->midi_handle->midi_file->messages.size())
+      return 0;
+    auto t = this->midi_handle->midi_file->tick_times[this->msg_index];
+    auto m = this->midi_handle->midi_file->messages[this->msg_index];
+    if (m.data2 == std::byte(0)) {
+      msg_index += 1;
+      auto t = this->midi_handle->midi_file->tick_times[this->msg_index];
+      auto m = this->midi_handle->midi_file->messages[this->msg_index];
+    }
+    std::vector<T> samples(n_samples, 0);
+    float note = midi_handle->get_note_freq(m.data1);
+    if (cur_midi_time >= t) {
+      note = midi_handle->get_note_freq(m.data1);
+      this->msg_index += 1;
+    }
+    midi_synth_params->pitch = note;
+    auto res =
+        this->midi_synth->gen_sine(midi_synth_params, samples, n_samples);
+    if (!this->node_buffer_fifo->enqueue(samples))
+      std::cout << "no space!\n";
+    this->cur_midi_time += /* tempo */ 1 * n_samples / 44800.0; // TODO
+    return res;
+  }
 };
 
 template <typename T> struct SSS_NodeList {

@@ -150,7 +150,11 @@ public:
     auto msg = msg_queue->pop_msg();
     if (msg.has_value()) {
       auto node = node_ecs.node_ecs[msg->node_idx];
-      node->run_fn(msg->req_bytes);
+      if (node->nt == MIDI_OUT) {
+        node->render_midi_file(msg->req_bytes);
+      } else {
+        node->run_fn(msg->req_bytes);
+      }
       return true;
     } else
       return false;

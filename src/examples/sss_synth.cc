@@ -1,10 +1,8 @@
-#include "../sss_synth.hpp"
 #include "../sss.hpp"
 #include <algorithm>
 #include <chrono>
 
-/* This is an example program that plays 3 sine waves corresponding
- *  to an AMajor chord
+/* This is an example program that plays a sine wave at 440 hz
  */
 
 #if SSS_HAVE_COREAUDIO

@@ -1,7 +1,9 @@
 #include "sss_file.hpp"
+#include <cmath>
 #include <cstddef>
 #include <string>
 #include <tuple>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -10,6 +12,16 @@
 //  [] midi playback
 //  [] midi streams
 //  [] fix message data format
+
+std::unordered_map<int, double> generate_midi_to_freq() {
+  std::unordered_map<int, double> map;
+  for (int i = 0; i < 128; ++i) {
+    map[i] = 440.0 * std::pow(2.0, (i - 69) / 12.0);
+  }
+  return map;
+}
+
+auto midi_note_map = generate_midi_to_freq();
 
 enum msg_type {
   NOTE_ON,
@@ -289,6 +301,7 @@ public:
   size_t midi_file_idx;
   size_t midi_tick;
 
+  float get_note_freq(std::byte note) { return midi_note_map[(int)note]; }
   void render(){};
 
   // launches a listener on another thread

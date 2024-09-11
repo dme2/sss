@@ -27,6 +27,7 @@ public:
   std::vector<AudioDeviceID> avail_devices;
   std::vector<AudioDeviceID> active_devices;
   AudioObjectPropertyAddress avail_property_address;
+  bool run_midi{false};
 
   // TODO: params class
   size_t sample_rate;

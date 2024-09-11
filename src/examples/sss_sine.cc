@@ -1,5 +1,4 @@
 #include "../sss.hpp"
-#include "../sss_synth.hpp"
 #include <algorithm>
 #include <chrono>
 
