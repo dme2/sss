@@ -2,6 +2,7 @@
 #include "../sss.hpp"
 #include <algorithm>
 #include <chrono>
+// #include <sss/sss.hpp>
 
 /* This is an example program that records using the default input device
  */
@@ -40,14 +41,14 @@ int main() {
   sss_handle->set_mixer_fn(mixer_fn);
 
   fn_type i_fn = input_fn;
-  auto node1 =
-      new SSS_Node<float>(FILE_INPUT, i_fn, 2, 1024, device_id, "recording.raw");
+  auto node1 = new SSS_Node<float>(FILE_INPUT, i_fn, 2, 1024, device_id,
+                                   "recording.raw");
 
   sss_handle->register_mixer_node_ecs(node1);
 
   sss_handle->init_input_backend();
   sss_handle->start_input_backend();
-  //sss_handle->list_devices();
+  // sss_handle->list_devices();
   std::this_thread::sleep_for(std::chrono::seconds(8));
   sss_handle->pause_input_backend();
   std::cout << "paused!\n";

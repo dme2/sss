@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.10)
-project(SSS VERSION 0.1 DESCRIPTION "A simple sound system" LANGUAGES CXX)
+project(sss VERSION 0.1 DESCRIPTION "A simple sound system" LANGUAGES CXX)
 set(CMAKE_MODULE_PATH ${SSS_SOURCE_DIR}/cmake ${CMAKE_MODULE_PATH})
 
 #add_executable(sss src/main.cc)
@@ -113,4 +113,15 @@ endif()
 configure_file(
     "${SSS_SOURCE_DIR}/src/config.h.in"
     "${SSS_SOURCE_DIR}/src/config.h"
+)
+
+# Install configuration files
+install(FILES "${SSS_SOURCE_DIR}/src/config.h" DESTINATION include)
+
+# Install header files
+install(FILES src/sss.hpp DESTINATION include)
+
+# Install target
+install(TARGETS sss_sine sss_synth sss_record sss_midi
+    RUNTIME DESTINATION bin
 )

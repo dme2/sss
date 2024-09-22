@@ -1,6 +1,7 @@
-#include "../sss.hpp"
+// #include "../sss.hpp"
 #include <algorithm>
 #include <chrono>
+#include <sss/sss.hpp>
 
 /* This is an example program that plays 3 sine waves corresponding
  *  to an AMajor chord

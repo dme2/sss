@@ -1,4 +1,5 @@
-#include "../sss.hpp"
+// #include "../sss.hpp"
+#include <sss/sss.hpp>
 
 #if SSS_HAVE_COREAUDIO
 std::string device_id = "73";
