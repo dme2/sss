@@ -3,8 +3,15 @@ project(simple_sound_system VERSION 0.1 DESCRIPTION "A simple sound system" LANG
 include(CheckIncludeFileCXX)
 
 option(ENABLE_ALSA "Enable ALSA backend" ON)
-set(SSS_HAVE_ALSA true)
 option(ENABLE_COREAUDIO "Enable CoreAudio backend" OFF)
+
+if (ENABLE_ALSA)
+  set(SSS_HAVE_ALSA true)
+endif()
+
+if (ENABLE_COREAUDIO)
+  set(SSS_HAVE_COREAUDIO true)
+endif()
 
 configure_file(
     src/config.h.in
@@ -18,7 +25,6 @@ if(ENABLE_ALSA)
     find_package(ALSA REQUIRED)
     if(ALSA_FOUND)
         set(STATUS_ALSA "OK")
-        set(SSS_HAVE_ALSA true)
         include_directories(${ALSA_INCLUDE_DIRS})
 				target_compile_definitions(sss INTERFACE SSS_HAVE_ALSA=1)
         target_link_libraries(sss_sine PRIVATE ${ALSA_LIBRARIES})
