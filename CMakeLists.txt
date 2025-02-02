@@ -2,8 +2,15 @@ Cmake_minimum_required(VERSION 3.10)
 project(simple_sound_system VERSION 0.1 DESCRIPTION "A simple sound system" LANGUAGES CXX)
 include(CheckIncludeFileCXX)
 
-option(ENABLE_ALSA "Enable ALSA backend" OFF)
-option(ENABLE_COREAUDIO "Enable CoreAudio backend" ON)
+option(ENABLE_ALSA "Enable ALSA backend" ON)
+set(SSS_HAVE_ALSA true)
+option(ENABLE_COREAUDIO "Enable CoreAudio backend" OFF)
+
+configure_file(
+    src/config.h.in
+    ../src/config.h
+)
+
 add_library(sss INTERFACE)
 add_executable(sss_sine src/examples/sss_sine.cc)
 
@@ -14,6 +21,7 @@ if(ENABLE_ALSA)
         set(SSS_HAVE_ALSA true)
         include_directories(${ALSA_INCLUDE_DIRS})
 				target_compile_definitions(sss INTERFACE SSS_HAVE_ALSA=1)
+        target_link_libraries(sss_sine PRIVATE ${ALSA_LIBRARIES})
     else()
         set(STATUS_ALSA "not found")
         set(SSS_HAVE_ALSA false)
@@ -55,10 +63,7 @@ else()
     set(AUDIOUNIT_LIBRARY "")
 endif()
 
-configure_file(
-    "src/config.h.in"
-    "src/config.h"
-)
+
 
 set_target_properties(
    	sss 

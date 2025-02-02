@@ -3,8 +3,6 @@
 #include "sss_midi.hpp"
 #include "sss_synth.hpp"
 #include "sss_util.hpp"
-
-#include <CoreFoundation/CoreFoundation.h> // ??
 #include <array>
 #include <cmath>
 #include <cstdlib>

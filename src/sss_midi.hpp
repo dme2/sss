@@ -34,7 +34,7 @@ struct midi_message {
   std::byte command;
   std::byte data1;
   std::byte data2;
-  msg_type msg_type;
+  msg_type type;
 
   enum msg {
     NORMAL = 0,
